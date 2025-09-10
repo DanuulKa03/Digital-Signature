@@ -1,0 +1,13 @@
+services:
+  device:
+    privileged: true
+    cap_add:
+      - ALL
+    ipc: host
+    working_dir: /firmware
+    build:
+      dockerfile: ./Dockerfile
+      context: .
+    volumes:
+      - .:/firmware
+      - ./docker/device/root:/root/

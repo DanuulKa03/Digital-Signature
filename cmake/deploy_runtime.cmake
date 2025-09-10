@@ -1,0 +1,3 @@
+if(DEFINED DEPS AND DEPS)
+    file(COPY ${DEPS} DESTINATION \"${DEST}\")
+endif()

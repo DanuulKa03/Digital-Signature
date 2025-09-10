@@ -1,0 +1,11 @@
+/build/
+/build/CMakeFiles/
+/build/cmake_install.cmake
+/build/CMakeCache.txt
+/build/digital_signature.exe
+/build/Makefile
+/cmake/
+/cmake/deploy_runtime.cmake
+/cmake/toolchain-mingw64-gcc.cmake
+/cmake-build-debug/
+/docker/device/root/
