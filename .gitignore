@@ -8,4 +8,4 @@
 /cmake/deploy_runtime.cmake
 /cmake/toolchain-mingw64-gcc.cmake
 /cmake-build-debug/
-/docker/device/root/
+/docker/device/
