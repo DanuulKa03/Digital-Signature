@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include<vector>
+#include <vector>
 
 using Poly = std::vector<int>;
 using PolyLL = std::vector<long long>;

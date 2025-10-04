@@ -1,14 +1,10 @@
 //
-// Created by Daniil Kazakov on 02.10.2025.
+// Created by Daniil Kazakov on 04.10.2025.
 //
 
-#pragma once
-#include <cstdint>
-#include <vector>
+#include "../include/hash.hpp"
 
-#include "math/common.hpp"
-
-static inline EHash H_e_small(const Poly &z_modq, const std::vector<uint8_t> &msg) {
+EHash H_e_small(const Poly &z_modq, const std::vector<uint8_t> &msg) {
   std::vector < uint8_t > buf;
   buf.reserve(msg.size() + 2u * (size_t) G_N);
   buf.insert(buf.end(), msg.begin(), msg.end());

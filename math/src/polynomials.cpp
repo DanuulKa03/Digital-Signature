@@ -1,47 +1,35 @@
 //
-// Created by Daniil Kazakov on 02.10.2025.
+// Created by Daniil Kazakov on 04.10.2025.
 //
 
-#pragma once
+#include "../include/arithmetic.hpp"
+#include "../include/polynomials.hpp"
 
-#include <algorithm>
-#include<math/common.hpp>
-
-// GF(2) многочлены (инверсия f) -- конечное поле из двух элементов 0, 1
-
-struct Poly2 {
-  std::vector<uint8_t> a; // uint8 0..255
-
-  Poly2() {
-  }
-
-  Poly2(int cap) { a.assign(cap + 1, 0); }
-};
-
-static int deg2(const Poly2 &p) {
+int deg2(const Poly2 &p) {
   for (int i = static_cast<int>(p.a.size()) - 1; i >= 0; --i) if (p.a[i]) return i;
   return -1;
 }
 
-static Poly2 trim2(const Poly2 &p) {
+Poly2 trim2(const Poly2 &p) {
   const int d = deg2(p);
   Poly2 r(std::ranges::max(d, 0));
   for (int i = 0; i <= d; ++i) r.a[i] = p.a[i];
   return r;
 }
 
-static Poly2 add2(const Poly2 &A, const Poly2 &B) {
-  int m = static_cast<int>(std::ranges::max(A.a.size(), B.a.size()));
+Poly2 add2(const Poly2 &A, const Poly2 &B) {
+  const int m = static_cast<int>(std::ranges::max(A.a.size(), B.a.size()));
   Poly2 R(m - 1);
   R.a.assign(m, 0);
   for (int i = 0; i < m; ++i) {
-    uint8_t va = (i < static_cast<int>(A.a.size()) ? A.a[i] : 0), vb = (i < static_cast<int>(B.a.size()) ? B.a[i] : 0);
+    const uint8_t va = (i < static_cast<int>(A.a.size()) ? A.a[i] : 0);
+    const uint8_t vb = (i < static_cast<int>(B.a.size()) ? B.a[i] : 0);
     R.a[i] = va ^ vb;
   }
   return trim2(R);
 }
 
-static Poly2 shl2_nonCirc(const Poly2 &A, int k) {
+Poly2 shl2_nonCirc(const Poly2 &A, int k) {
   if (k <= 0) return A;
   Poly2 R(static_cast<int>(A.a.size()) - 1 + k);
   R.a.assign(A.a.size() + k, 0);
@@ -49,7 +37,7 @@ static Poly2 shl2_nonCirc(const Poly2 &A, int k) {
   return R;
 }
 
-static Poly2 mul2_nonCirc(const Poly2 &A, const Poly2 &B) {
+Poly2 mul2_nonCirc(const Poly2 &A, const Poly2 &B) {
   Poly2 R(static_cast<int>(A.a.size()) + static_cast<int>(B.a.size()));
   R.a.assign(A.a.size() + B.a.size() + 1, 0);
   for (int i = 0; i < static_cast<int>(A.a.size()); ++i)
@@ -62,7 +50,7 @@ static Poly2 mul2_nonCirc(const Poly2 &A, const Poly2 &B) {
   return trim2(R);
 }
 
-static void div2_poly(const Poly2 &A, const Poly2 &B, Poly2 &Q, Poly2 &R) {
+void div2_poly(const Poly2 &A, const Poly2 &B, Poly2 &Q, Poly2 &R) {
   Poly2 a = A;
   Q.a.assign(std::ranges::max(1, static_cast<int>(A.a.size())), 0);
   const int dB = deg2(B);
@@ -84,8 +72,7 @@ static void div2_poly(const Poly2 &A, const Poly2 &B, Poly2 &Q, Poly2 &R) {
   R = a;
 }
 
-// инверсия f mod 2 (по модулю X^N + 1)
-static bool invertMod2(const Poly &f, Poly &inv2_out) {
+bool invertMod2(const Poly &f, Poly &inv2_out) {
   Poly2 F(G_N);
   F.a.assign(G_N + 1, 0);
   for (int i = 0; i < G_N; ++i) F.a[i] = (uint8_t)(f[i] & 1);
@@ -105,7 +92,7 @@ static bool invertMod2(const Poly &f, Poly &inv2_out) {
       Poly2 Q, R;
       div2_poly(va, P, Q, R);
       inv2_out.assign(G_N, 0);
-      for (int i = 0; i < G_N; ++i) inv2_out[i] = (i < (int) R.a.size() ? (R.a[i] & 1) : 0);
+      for (int i = 0; i < G_N; ++i) inv2_out[i] = (i < static_cast<int>(R.a.size()) ? (R.a[i] & 1) : 0);
       return true;
     }
     Poly2 Q, R;
@@ -121,15 +108,14 @@ static bool invertMod2(const Poly &f, Poly &inv2_out) {
   }
 }
 
-// поднятие Хензеля до mod Q
-static Poly henselLiftToQ(const Poly &f, const Poly &inv2) {
+Poly henselLiftToQ(const Poly &f, const Poly &inv2) {
   Poly inv = inv2;
   for (int i = 0; i < G_N; ++i) inv[i] &= 1;
   int M = 2;
   while (M < G_Q) {
     Poly t = mulModPow2(inv, f, M);
-    int nextM = M << 1;
-    long long mask = (long long) nextM - 1;
+    const int nextM = M << 1;
+    const long long mask = static_cast<long long>(nextM) - 1;
     Poly corr(G_N, 0);
     for (int i = 0; i < G_N; ++i) {
       int ti = t[i] & (M - 1);
@@ -137,7 +123,7 @@ static Poly henselLiftToQ(const Poly &f, const Poly &inv2) {
       corr[i] = v;
     }
     inv = mulModPow2(inv, corr, nextM);
-    for (int i = 0; i < G_N; ++i) inv[i] = (int) (inv[i] & mask);
+    for (int i = 0; i < G_N; ++i) inv[i] = static_cast<int>(inv[i] & mask);
     M = nextM;
   }
   Poly res(G_N, 0);
