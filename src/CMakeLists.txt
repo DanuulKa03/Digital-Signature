@@ -9,12 +9,18 @@ if (FLAG_GUI)
     find_package(Qt5 COMPONENTS Core Gui Qml Sql Network REQUIRED)
 endif ()
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/math)
+add_subdirectory(math)
 
-add_executable(digital_signature main.cpp)
+add_executable(digital_signature
+        main.cpp
+        console/utils.cpp
+        console/utils.hpp
+        console/settings.cpp
+        console/settings.hpp
+)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
