@@ -15,6 +15,8 @@ void SetupConsole() {
   int consoleWidth = 900;
   int consoleHeight = 520;
 
+  //commit
+
   int screenWidth = GetSystemMetrics(SM_CXSCREEN);
   int screenHeight = GetSystemMetrics(SM_CYSCREEN);
   int posX = (screenWidth - consoleWidth) / 2;
