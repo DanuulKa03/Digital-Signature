@@ -60,6 +60,7 @@ std::string to_target_file_path(const std::string &userPath, const std::string &
       p /= defaultName;
     }
     else {
+// саня крутой, но немножечко злой
       if (!p.has_filename()) p /= defaultName;
       if (!p.has_extension()) p.replace_extension(defaultExt);
     }
