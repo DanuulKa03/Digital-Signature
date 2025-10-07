@@ -1,345 +1,217 @@
-#include <fstream>
 #include <iostream>
+#include <fstream>
+#include <iterator>
+#include <vector>
+#include <filesystem>
+#include <cstdint>
 
-#include "common.hpp"
-#include "arithmetic.hpp"
-#include "hash.hpp"
-#include "console/utils.hpp"
-#include "ntru/keys.hpp"
-#include "ntru/ntru.hpp"
+#include "ui.h"
+#include "util.h"
+#include "param_input_output.h"
+#include "key_input_output.h"
+#include "sign_input_output.h"
 
-// ---------------------------- Ğ—Ğ°Ğ³Ñ€ÑƒĞ·ĞºĞ°/ÑĞ¾Ñ…Ñ€Ğ°Ğ½ĞµĞ½Ğ¸Ğµ Ğ¿Ğ°Ñ€Ğ°Ğ¼ĞµÑ‚Ñ€Ğ¾Ğ² Ğ¸ ĞºĞ»ÑÑ‡ĞµĞ¹ ----------------------------
-static bool LoadParameters(const std::string &paramPath) {
-  std::ifstream in(paramPath);
-  if (!in) {
-    std::cerr << "ĞĞµ ÑƒĞ´Ğ°Ğ»Ğ¾ÑÑŒ Ğ¾Ñ‚ĞºÑ€Ñ‹Ñ‚ÑŒ Ñ„Ğ°Ğ¹Ğ» Ğ¿Ğ°Ñ€Ğ°Ğ¼ĞµÑ‚Ñ€Ğ¾Ğ²: " << paramPath << "\n";
-    return false;
-  }
+#include "math/params.h"
+#include "math/arithmetic.h"
+#include "math/hash.h"
+#include "math/keys.h"
+#include "math/sign.h"
 
-  std::string line;
-  int have = 0;
-  while (getline(in, line)) {
-    line = trim(line);
-    if (line.empty() || line[0] == '#') continue;
-    const size_t eq = line.find('=');
-    if (eq == std::string::npos) continue;
-    std::string k = trim(line.substr(0, eq)), v = trim(line.substr(eq + 1));
-    if (k == "N") {
-      G_N = stoi(v);
-      have++;
-    } else if (k == "Q") {
-      G_Q = stoi(v);
-      have++;
-    } else if (k == "D") {
-      G_D = stoi(v);
-      have++;
-    } else if (k == "NU") {
-      G_NU = stod(v);
-      have++;
-    } else if (k == "NORM_BOUND") {
-      G_NORM_BOUND = stoi(v);
-      have++;
-    } else if (k == "ETA") {
-      G_ETA = stod(v);
-      have++;
-    } else if (k == "ALPHA") {
-      G_ALPHA = stoi(v);
-      have++;
-    } else if (k == "SIGMA") {
-      G_SIGMA = stoi(v);
-      have++;
-    } else if (k == "MAX_SIGN_ATTEMPTS_MASK") { G_MAX_SIGN_ATT = stoi(v); }
-  }
-  if (have < 8) {
-    std::cerr << "Ğ¤Ğ°Ğ¹Ğ» Ğ¿Ğ°Ñ€Ğ°Ğ¼ĞµÑ‚Ñ€Ğ¾Ğ² Ğ½ĞµĞ¿Ğ¾Ğ»Ğ½Ñ‹Ğ¹. Ğ¢Ñ€ĞµĞ±ÑƒÑÑ‚ÑÑ: N,Q,D,NU,NORM_BOUND,ETA,ALPHA,SIGMA\n";
-    return false;
-  }
-  if (G_N <= 0 || G_Q <= 0 || G_D <= 0 || G_SIGMA <= 0 || G_ALPHA < 0) {
-    std::cerr << "ĞĞµĞºĞ¾Ñ€Ñ€ĞµĞºÑ‚Ğ½Ñ‹Ğµ Ğ·Ğ½Ğ°Ñ‡ĞµĞ½Ğ¸Ñ Ğ¿Ğ°Ñ€Ğ°Ğ¼ĞµÑ‚Ñ€Ğ¾Ğ².\n";
-    return false;
-  }
+#define NOMINMAX
+#include <windows.h>
 
-  G_MACC = std::exp(1.0 + 1.0 / (2.0 * static_cast<double>(G_ALPHA) * static_cast<double>(G_ALPHA)));
-  G_Fkey.assign(G_N, 0);
-  G_Gkey.assign(G_N, 0);
-  G_Hpub.assign(G_N, 0);
-  return true;
-}
+using namespace std;
+using namespace ntru;
+namespace fs = std::filesystem;
 
-static bool SavePublicKeyAtLocation(const std::string &userPath) {
-  const std::string finalPath = to_target_file_path(userPath);
-  if (!ensure_parent_dirs(finalPath)) {
-    std::cout << "ĞĞµ ÑƒĞ´Ğ°Ğ»Ğ¾ÑÑŒ ÑĞ¾Ğ·Ğ´Ğ°Ñ‚ÑŒ Ñ€Ğ¾Ğ´Ğ¸Ñ‚ĞµĞ»ÑŒÑĞºĞ¸Ğµ ĞºĞ°Ñ‚Ğ°Ğ»Ğ¾Ğ³Ğ¸ Ğ´Ğ»Ñ: " << finalPath << "\n";
-    return false;
-  }
-  std::ofstream out(finalPath, std::ios::binary | std::ios::trunc);
-  if (!out) {
-    std::cout << "ĞĞµ ÑƒĞ´Ğ°Ğ»Ğ¾ÑÑŒ ÑĞ¾Ğ·Ğ´Ğ°Ñ‚ÑŒ Ñ„Ğ°Ğ¹Ğ» Ğ¾Ñ‚ĞºÑ€Ñ‹Ñ‚Ğ¾Ğ³Ğ¾ ĞºĞ»ÑÑ‡Ğ°: " << finalPath << "\n";
-    return false;
-  }
-  out << G_N << "\n";
-  for (int i = 0; i < G_N; ++i) {
-    out << G_Hpub[i];
-    if (i + 1 < G_N) out << ' ';
-  }
-  out << "\n";
-  out.close();
-  std::cout << "ĞÑ‚ĞºÑ€Ñ‹Ñ‚Ñ‹Ğ¹ ĞºĞ»ÑÑ‡ ÑĞ¾Ñ…Ñ€Ğ°Ğ½Ñ‘Ğ½ Ğ²: " << finalPath << "\n";
-  return true;
-}
+// ---- Ôëîó ----
+static bool KeygenFlow() {
 
-static bool LoadPublicKey(const std::string &pubPath) {
-  std::ifstream in(pubPath);
-  if (!in) {
-    std::cerr << "ĞĞµ ÑƒĞ´Ğ°Ğ»Ğ¾ÑÑŒ Ğ¾Ñ‚ĞºÑ€Ñ‹Ñ‚ÑŒ Ñ„Ğ°Ğ¹Ğ» Ğ¾Ñ‚ĞºÑ€Ñ‹Ñ‚Ğ¾Ğ³Ğ¾ ĞºĞ»ÑÑ‡Ğ°: " << pubPath << "\n";
-    return false;
-  }
-  int n_in = 0;
-  if (!(in >> n_in)) {
-    std::cerr << "ĞĞµĞºĞ¾Ñ€Ñ€ĞµĞºÑ‚Ğ½Ñ‹Ğ¹ Ñ„Ğ¾Ñ€Ğ¼Ğ°Ñ‚ Ğ¾Ñ‚ĞºÑ€Ñ‹Ñ‚Ğ¾Ğ³Ğ¾ ĞºĞ»ÑÑ‡Ğ° (Ğ¾Ğ¶Ğ¸Ğ´Ğ°Ğ»ÑÑ N)\n";
-    return false;
-  }
-  if (n_in != G_N) {
-    std::cerr << "ĞĞµÑĞ¾Ğ¾Ñ‚Ğ²ĞµÑ‚ÑÑ‚Ğ²Ğ¸Ğµ N: params.N=" << G_N << ", key.N=" << n_in << "\n";
-    return false;
-  }
-  G_Hpub.assign(G_N, 0);
-  for (int i = 0; i < G_N; ++i) {
-    long long v;
-    if (!(in >> v)) {
-      std::cerr << "ĞĞµĞ´Ğ¾ÑÑ‚Ğ°Ñ‚Ğ¾Ñ‡Ğ½Ğ¾ ĞºĞ¾ÑÑ„Ñ„Ğ¸Ñ†Ğ¸ĞµĞ½Ñ‚Ğ¾Ğ² Ğ² Ñ„Ğ°Ğ¹Ğ»Ğµ ĞºĞ»ÑÑ‡Ğ°\n";
-      return false;
+    string params = readPathLine("Óêàæèòå ïóòü ê ôàéëó ïàğàìåòğîâ: ");
+    if (params.empty() || !LoadParametersFile(params)) {
+        return false;
     }
-    G_Hpub[i] = modQ(v);
-  }
-  return true;
-}
 
-// ---------------------------- Ğ’ĞµÑ€Ñ…Ğ½Ğ¸Ğ¹ ÑƒÑ€Ğ¾Ğ²ĞµĞ½ÑŒ ----------------------------
-static bool SignFile(const std::string &path) {
-  std::ifstream in(path, std::ios::binary);
-  if (!in) {
-    std::cerr << "ĞĞµ ÑƒĞ´Ğ°Ğ»Ğ¾ÑÑŒ Ğ¾Ñ‚ĞºÑ€Ñ‹Ñ‚ÑŒ Ñ„Ğ°Ğ¹Ğ»: " << path << "\n";
-    return false;
-  }
-  std::vector<uint8_t> msg((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-
-  Signature S;
-  if (!sign_strict(msg, S)) {
-    std::cerr << "ĞŸĞ¾Ğ´Ğ¿Ğ¸ÑÑŒ Ğ½Ğµ ÑƒĞ´Ğ°Ğ»Ğ°ÑÑŒ (rejection stage)\n";
-    return false;
-  }
-  return write_signed(path, msg, S);
-}
-
-static bool VerifyFileExternal(const std::string &signedPath, const std::string &origPath) {
-  std::vector <uint8_t> msg;
-  Signature S;
-  uint64_t L = 0;
-  int64_t ts = 0;
-  if (!read_signed(signedPath, msg, S, L, ts)) return false;
-
-  if (!std::filesystem::exists(origPath)) {
-    std::cout << "Ğ˜ÑÑ…Ğ¾Ğ´Ğ½Ñ‹Ğ¹ Ñ„Ğ°Ğ¹Ğ» Ğ¾Ñ‚ÑÑƒÑ‚ÑÑ‚Ğ²ÑƒĞµÑ‚ â†’ Ğ¿Ğ¾Ğ´Ğ¿Ğ¸ÑÑŒ Ğ½ĞµĞ´ĞµĞ¹ÑÑ‚Ğ²Ğ¸Ñ‚ĞµĞ»ÑŒĞ½Ğ°\n";
-    return false;
-  }
-  int64_t ts_now = 0;
-  try {
-    auto ftime = std::filesystem::last_write_time(origPath);
-    ts_now = (int64_t) ftime.time_since_epoch().count();
-  } catch (...) { ts_now = 0; }
-  if (ts_now != ts) {
-    std::cout << "ĞŸĞ¾Ğ´Ğ¿Ğ¸ÑÑŒ Ğ½ĞµĞ´ĞµĞ¹ÑÑ‚Ğ²Ğ¸Ñ‚ĞµĞ»ÑŒĞ½Ğ° (Ñ„Ğ°Ğ¹Ğ» Ğ±Ñ‹Ğ» Ğ¼Ğ¾Ğ´Ğ¸Ñ„Ğ¸Ñ†Ğ¸Ñ€Ğ¾Ğ²Ğ°Ğ½)\n";
-    return false;
-  }
-
-  Poly hx1 = mulModQ(G_Hpub, S.x1);
-  Poly z = subMod(S.x2, hx1);
-  EHash eh2 = H_e_small(z, msg);
-  for (int i = 0; i < G_N; ++i) {
-    if (eh2.e_mod[i] != S.e[i]) {
-      std::cout << "ĞŸĞ¾Ğ´Ğ¿Ğ¸ÑÑŒ Ğ½ĞµĞ´ĞµĞ¹ÑÑ‚Ğ²Ğ¸Ñ‚ĞµĞ»ÑŒĞ½Ğ° (hash mismatch)\n";
-      return false;
+    if (!keygen()) { 
+        cerr << "Íå óäàëîñü ñãåíåğèğîâàòü êëş÷è (ïîïğîáóéòå äğóãèå ïàğàìåòğû)\n"; 
+        return false; 
     }
-  }
 
-  long double x2norm = 0;
-  for (int i = 0; i < G_N; ++i) {
-    const int a = center(S.x1[i]);
-    const int b = center(S.x2[i]);
-    x2norm += static_cast<long double>(a) * a + static_cast<long double>(b) * b;
-  }
+    while (true) {
+        string where = readPathLine("Êóäà ñîõğàíèòü ÏĞÈÂÀÒÍÛÉ êëş÷ (ïàïêà èëè ôàéë): ");
 
-  const long double bound = static_cast<long double>(G_ETA) * static_cast<long double>(G_SIGMA) * sqrtl(2.0L * static_cast<long double>(G_N));
+        if (where.empty()) { 
+            cout << "[!] Ïóòü ïóñòîé. Ïîâòîğèòå.\n"; 
+            continue; 
+        }
 
-  if (sqrtl(x2norm) > bound) {
-    std::cout << "ĞŸĞ¾Ğ´Ğ¿Ğ¸ÑÑŒ Ğ½ĞµĞ´ĞµĞ¹ÑÑ‚Ğ²Ğ¸Ñ‚ĞµĞ»ÑŒĞ½Ğ° (norm)\n";
-    return false;
-  }
+        if (SavePrivateKey(where)) {
+            break;
+        }
+    }
+    while (true) {
+        string where = readPathLine("Êóäà ñîõğàíèòü ÎÒÊĞÛÒÛÉ êëş÷ (ïàïêà èëè ôàéë): ");
 
-  std::cout << "ĞŸĞ¾Ğ´Ğ¿Ğ¸ÑÑŒ Ğ”Ğ•Ğ™Ğ¡Ğ¢Ğ’Ğ˜Ğ¢Ğ•Ğ›Ğ¬ĞĞ Ğ´Ğ»Ñ Ñ„Ğ°Ğ¹Ğ»Ğ°: " << origPath << "\n";
-  return true;
+        if (where.empty()) { 
+            cout << "[!] Ïóòü ïóñòîé. Ïîâòîğèòå.\n"; 
+            continue; 
+        }
+
+        if (SavePublicKey(where)) {
+            break;
+        }
+    }
+    return true;
 }
+static bool SignFlow() {
 
-static bool ExtractMessage(const std::string &signedPath) {
-  std::ifstream in(signedPath, std::ios::binary | std::ios::ate);
-  if (!in) {
-    std::cerr << "ĞĞµ ÑƒĞ´Ğ°Ğ»Ğ¾ÑÑŒ Ğ¾Ñ‚ĞºÑ€Ñ‹Ñ‚ÑŒ " << signedPath << "\n";
-    return false;
-  }
-  std::streamoff fileSize = in.tellg();
-  in.seekg(0, std::ios::beg);
+    string params = readPathLine("Óêàæèòå ïóòü ê ôàéëó ïàğàìåòğîâ: ");
+    if (params.empty() || !LoadParametersFile(params)) {
+        return false;
+    }
 
-  char magic[4];
-  in.read(magic, 4);
-  if (in.gcount() != 4 || magic[0] != 'S' || magic[1] != 'G' || magic[2] != 'N' || magic[3] != '1') {
-    std::cout << "ĞĞµ Ğ¿Ğ¾Ğ´Ğ¿Ğ¸ÑĞ°Ğ½Ğ½Ñ‹Ğ¹ Ñ„Ğ°Ğ¹Ğ»\n";
-    return false;
-  }
+    string priv = readPathLine("Óêàæèòå ïóòü ê ôàéëó ïğèâàòíîãî êëş÷à: ");
+    if (priv.empty() || !LoadPrivateKey(priv)) {
+        return false;
+    }
 
-  uint64_t L = 0;
-  int64_t ts = 0;
-  in.read(reinterpret_cast<char *>(&L), sizeof(L));
-  in.read(reinterpret_cast<char *>(&ts), sizeof(ts));
-  const size_t expected = 4 + 8 + 8 + static_cast<size_t>(L) + static_cast<size_t>(3 * G_N * 2);
-  if (fileSize < static_cast<std::streamoff>(expected)) {
-    std::cout << "ĞŸĞ¾Ğ´Ğ¿Ğ¸ÑĞ°Ğ½Ğ½Ñ‹Ğ¹ Ñ„Ğ°Ğ¹Ğ» Ğ¿Ğ¾Ğ²Ñ€ĞµĞ¶Ğ´ĞµĞ½\n";
-    return false;
-  }
 
-  std::vector<uint8_t> msg(L);
-  if (L > 0) in.read(reinterpret_cast<char *>(msg.data()), (std::streamsize) L);
-  std::string outPath = signedPath + ".restored.txt";
-  std::ofstream out(outPath, std::ios::binary);
-  if (!out) {
-    std::cerr << "ĞĞµ ÑƒĞ´Ğ°Ğ»Ğ¾ÑÑŒ ÑĞ¾Ğ·Ğ´Ğ°Ñ‚ÑŒ " << outPath << "\n";
-    return false;
-  }
-  out.write(reinterpret_cast<const char *>(msg.data()), (std::streamsize) L);
-  out.close();
-  std::cout << "Ğ˜ÑÑ…Ğ¾Ğ´Ğ½Ğ¾Ğµ ÑĞ¾Ğ¾Ğ±Ñ‰ĞµĞ½Ğ¸Ğµ Ğ¿Ğ¾Ğ¼ĞµÑ‰ĞµĞ½Ğ¾ Ğ²: " << outPath << "\n";
-  return true;
+    string doc = readPathLine("Óêàæèòå ïóòü ê ôàéëó, êîòîğûé íóæíî ïîäïèñàòü: ");
+    if (doc.empty()) { 
+        cout << "[!] Ïóòü ïóñòîé.\n"; 
+        return false; 
+    }
+
+    ifstream in(doc, ios::binary); 
+    if (!in) { 
+        cerr << "Íå óäàëîñü îòêğûòü " << doc << "\n"; 
+        return false; 
+    }
+    vector<uint8_t> msg((istreambuf_iterator<char>(in)), istreambuf_iterator<char>());
+
+    Signature S;
+
+    if (!sign_strict(msg, S)) 
+    { cerr << "Ïîäïèñü íå óäàëàñü (rejection stage)\n"; 
+    return false; 
+    }
+
+    string sigPath = readPathLine("Êóäà ñîõğàíèòü ôàéë ïîäïèñè (ïàïêà èëè èìÿ .sig): ");
+    if (sigPath.empty()) { 
+        cout << "[!] Ïóòü ïóñòîé.\n"; 
+        return false; 
+    }
+
+    if (is_directory_like(sigPath)) {
+        fs::path p(sigPath); fs::path base = fs::path(doc).filename(); base += ".sig";
+        sigPath = (p / base).string();
+    }
+
+    else {
+        fs::path p(sigPath); if (!p.has_extension()) p.replace_extension(".sig"); sigPath = p.string();
+    }
+
+    return write_sig(sigPath, S);
 }
+static bool VerifyFlow() {
 
-// ---------------------------- ĞœĞµĞ½Ñ Ğ¸ main ----------------------------
-static void PrintMenu() {
-  system("cls");
-  std::cout << "================================================================================\n";
-  std::cout << "                             Ğ¡Ğ˜Ğ¡Ğ¢Ğ•ĞœĞ Ğ¦Ğ˜Ğ¤Ğ ĞĞ’ĞĞ™ ĞŸĞĞ”ĞŸĞ˜Ğ¡Ğ˜\n";
-  std::cout << "================================================================================\n\n";
-  std::cout << "   [1] ĞŸĞ¾Ğ´Ğ¿Ğ¸ÑĞ°Ñ‚ÑŒ Ñ„Ğ°Ğ¹Ğ»\n";
-  std::cout << "   [2] ĞŸÑ€Ğ¾Ğ²ĞµÑ€Ğ¸Ñ‚ÑŒ Ğ¿Ğ¾Ğ´Ğ¿Ğ¸ÑÑŒ\n";
-  std::cout << "   [3] Ğ’Ğ¾ÑÑÑ‚Ğ°Ğ½Ğ¾Ğ²Ğ¸Ñ‚ÑŒ Ğ¸ÑÑ…Ğ¾Ğ´Ğ½Ñ‹Ğ¹ Ñ„Ğ°Ğ¹Ğ» Ğ¸Ğ· .signed\n";
-  std::cout << "   [0] Ğ’Ñ‹Ñ…Ğ¾Ğ´\n\n";
-  std::cout << "================================================================================\n";
-  std::cout << " Ğ’Ñ‹Ğ±ĞµÑ€Ğ¸Ñ‚Ğµ Ğ¿ÑƒĞ½ĞºÑ‚ Ğ¼ĞµĞ½Ñ: ";
-}
+    string doc = readPathLine("Óêàæèòå ïóòü ê èñõîäíîìó ôàéëó (äîêóìåíòó): ");
+    if (doc.empty() || !fs::exists(doc)) { 
+        cout << "[!] Ôàéë íå íàéäåí.\n"; 
+        return false; 
+    }
 
-static void WaitForEnter() {
-  std::cout << "\nĞĞ°Ğ¶Ğ¼Ğ¸Ñ‚Ğµ Enter, Ñ‡Ñ‚Ğ¾Ğ±Ñ‹ Ğ²ĞµÑ€Ğ½ÑƒÑ‚ÑŒÑÑ Ğ² Ğ¼ĞµĞ½Ñ...";
-  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    string params = readPathLine("Óêàæèòå ïóòü ê ôàéëó ïàğàìåòğîâ: ");
+    if (params.empty() || !LoadParametersFile(params)) {
+        return false;
+    }
+
+    string pub = readPathLine("Óêàæèòå ïóòü ê ôàéëó îòêğûòîãî êëş÷à: ");
+    if (pub.empty() || !LoadPublicKey(pub)) {
+        return false;
+    }
+
+    string sigPath = readPathLine("Óêàæèòå ïóòü ê ôàéëó ïîäïèñè (.sig): ");
+    if (sigPath.empty()) { 
+        cout << "[!] Ïóòü ïóñòîé.\n"; 
+        return false; 
+    }
+
+    Signature S; 
+    if (!read_sig(sigPath, S)) {
+        return false;
+    }
+
+    ifstream in(doc, ios::binary);
+    vector<uint8_t> msg((istreambuf_iterator<char>(in)), istreambuf_iterator<char>());
+
+    Poly hx1 = mulModQ(G_H, S.x1);
+    Poly z = subMod(S.x2, hx1);
+    EHash eh2 = H_e_small(z, msg);
+
+    for (int i = 0; i < G_N; ++i) {
+        if (eh2.e_mod[i] != S.e[i]) {
+            cout << "Ïîäïèñü ÍÅÄÅÉÑÒÂÈÒÅËÜÍÀ (hash mismatch)\n"; 
+            return false;
+        }
+    }
+    long double x2norm = 0;
+    for (int i = 0; i < G_N; ++i) { 
+        int a = center(S.x1[i]); 
+        int b = center(S.x2[i]); 
+        x2norm += (long double)a * a + (long double)b * b; 
+    }
+    long double bound = (long double)G_ETA * (long double)G_SIGMA * sqrtl(2.0L * (long double)G_N);
+
+    if (sqrtl(x2norm) > bound) { 
+        cout << "Ïîäïèñü ÍÅÄÅÉÑÒÂÈÒÅËÜÍÀ (norm)\n"; 
+        return false; 
+    }
+
+    cout << "Ïîäïèñü ÄÅÉÑÒÂÈÒÅËÜÍÀ\n"; return true;
 }
 
 int main() {
-  std::ios::sync_with_stdio(false);
-  std::cin.tie(nullptr);
+    setlocale(LC_ALL, "Rus");
+    ios::sync_with_stdio(false); cin.tie(nullptr);
+    SetupConsoleZoom(22); SetupConsole();
 
-  setlocale(LC_ALL, "Rus");
+    while (true) {
+        PrintMenu();
+        int c; 
 
-  // WinAPI Â«ÑƒĞºÑ€Ğ°ÑˆĞ°Ğ»ĞºĞ¸Â»
-  SetupConsoleZoom(22);
-  SetupConsole();
-  EnableScrollbars();
-
-  while (true) {
-    PrintMenu();
-    int c;
-    if (!(std::cin >> c)) return 0;
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
-    if (c == 0) break;
-
-    else if (c == 1) {
-      // ĞŸĞ¾Ğ´Ğ¿Ğ¸ÑĞ°Ñ‚ÑŒ
-      std::cout << "\n";
-      std::string paramPath = readPathLine("Ğ£ĞºĞ°Ğ¶Ğ¸Ñ‚Ğµ Ğ¿ÑƒÑ‚ÑŒ Ğº Ñ„Ğ°Ğ¹Ğ»Ñƒ Ğ¿Ğ°Ñ€Ğ°Ğ¼ĞµÑ‚Ñ€Ğ¾Ğ²: ");
-      if (paramPath.empty() || !LoadParameters(paramPath)) {
-        WaitForEnter();
-        continue;
-      }
-
-      if (!keygen()) {
-        std::cerr << "ĞĞµ ÑƒĞ´Ğ°Ğ»Ğ¾ÑÑŒ ÑĞ³ĞµĞ½ĞµÑ€Ğ¸Ñ€Ğ¾Ğ²Ğ°Ñ‚ÑŒ ĞºĞ»ÑÑ‡Ğ¸ (F Ğ½ĞµĞ²Ñ‹Ñ€Ğ¾Ğ¶Ğ´ĞµĞ½ Ğ¿Ğ¾ mod 2?)\n";
-        WaitForEnter();
-        continue;
-      }
-
-      while (true) {
-        std::string where = readPathLine("Ğ£ĞºĞ°Ğ¶Ğ¸Ñ‚Ğµ Ğ¿ÑƒÑ‚ÑŒ Ğº ĞœĞ•Ğ¡Ğ¢Ğ£ ÑĞ¾Ñ…Ñ€Ğ°Ğ½ĞµĞ½Ğ¸Ñ Ğ¾Ñ‚ĞºÑ€Ñ‹Ñ‚Ğ¾Ğ³Ğ¾ ĞºĞ»ÑÑ‡Ğ° (Ğ¿Ğ°Ğ¿ĞºĞ° Ğ¸Ğ»Ğ¸ Ñ„Ğ°Ğ¹Ğ»): ");
-        if (where.empty()) {
-          std::cout << "[!] ĞŸÑƒÑ‚ÑŒ Ğ¿ÑƒÑÑ‚Ğ¾Ğ¹. ĞŸĞ¾Ğ²Ñ‚Ğ¾Ñ€Ğ¸Ñ‚Ğµ.\n";
-          continue;
+        if (!(cin >> c)) {
+            return 0;
         }
-        if (SavePublicKeyAtLocation(where)) break; // Ğ´Ğ°Ğ»ÑŒÑˆĞµ Ñ‚Ğ¾Ğ»ÑŒĞºĞ¾ Ğ¿Ñ€Ğ¸ ÑƒÑĞ¿ĞµÑ…Ğµ Ğ·Ğ°Ğ¿Ğ¸ÑĞ¸
-      }
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
-      std::string filePath = readPathLine("Ğ£ĞºĞ°Ğ¶Ğ¸Ñ‚Ğµ Ğ¿ÑƒÑ‚ÑŒ Ğº Ñ„Ğ°Ğ¹Ğ»Ñƒ, ĞºĞ¾Ñ‚Ğ¾Ñ€Ñ‹Ğ¹ Ğ½ÑƒĞ¶Ğ½Ğ¾ Ğ¿Ğ¾Ğ´Ğ¿Ğ¸ÑĞ°Ñ‚ÑŒ: ");
-      if (filePath.empty()) {
-        std::cout << "[!] ĞŸÑƒÑ‚ÑŒ Ğ¿ÑƒÑÑ‚Ğ¾Ğ¹. ĞŸĞ¾Ğ²Ñ‚Ğ¾Ñ€Ğ¸Ñ‚Ğµ.\n";
-        WaitForEnter();
-        continue;
-      }
+        switch (c) {
+        case 0:
+            break;
 
-      if (!SignFile(filePath)) { std::cerr << "ĞŸĞ¾Ğ´Ğ¿Ğ¸ÑÑŒ Ğ½Ğµ ÑƒĞ´Ğ°Ğ»Ğ°ÑÑŒ.\n"; }
-      WaitForEnter();
-    } else if (c == 2) {
-      // ĞŸÑ€Ğ¾Ğ²ĞµÑ€Ğ¸Ñ‚ÑŒ
-      std::cout << "\n";
-      std::string paramPath = readPathLine("Ğ£ĞºĞ°Ğ¶Ğ¸Ñ‚Ğµ Ğ¿ÑƒÑ‚ÑŒ Ğº Ñ„Ğ°Ğ¹Ğ»Ñƒ Ğ¿Ğ°Ñ€Ğ°Ğ¼ĞµÑ‚Ñ€Ğ¾Ğ²: ");
-      if (paramPath.empty() || !LoadParameters(paramPath)) {
-        WaitForEnter();
-        continue;
-      }
+        case 1:
+            if (!KeygenFlow())
+                cout << "[!] Ãåíåğàöèÿ íå âûïîëíåíà.\n";
+            WaitForEnter();
+            break;
 
-      std::string pubPath = readPathLine("Ğ£ĞºĞ°Ğ¶Ğ¸Ñ‚Ğµ Ğ¿ÑƒÑ‚ÑŒ Ğº Ñ„Ğ°Ğ¹Ğ»Ñƒ Ğ¾Ñ‚ĞºÑ€Ñ‹Ñ‚Ğ¾Ğ³Ğ¾ ĞºĞ»ÑÑ‡Ğ°: ");
-      if (pubPath.empty() || !LoadPublicKey(pubPath)) {
-        WaitForEnter();
-        continue;
-      }
+        case 2:
+            if (!SignFlow())
+                cout << "[!] Ïîäïèñü íå âûïîëíåíà.\n";
+            WaitForEnter();
+            break;
 
-      std::string signedPath = readPathLine("Ğ£ĞºĞ°Ğ¶Ğ¸Ñ‚Ğµ Ğ¿ÑƒÑ‚ÑŒ Ğº Ğ¿Ğ¾Ğ´Ğ¿Ğ¸ÑĞ°Ğ½Ğ½Ğ¾Ğ¼Ñƒ Ñ„Ğ°Ğ¹Ğ»Ñƒ (*.signed): ");
-      if (signedPath.empty()) {
-        std::cout << "[!] ĞŸÑƒÑ‚ÑŒ Ğ¿ÑƒÑÑ‚Ğ¾Ğ¹. ĞŸĞ¾Ğ²Ñ‚Ğ¾Ñ€Ğ¸Ñ‚Ğµ.\n";
-        WaitForEnter();
-        continue;
-      }
+        case 3:
+            if (!VerifyFlow())
+                cout << "[!] Ïğîâåğêà íå âûïîëíåíà.\n";
+            WaitForEnter();
+            break;
 
-      std::string origPath = signedPath;
-      size_t pos = origPath.rfind(".signed");
-      if (pos != std::string::npos) origPath.erase(pos);
+        default:
+            cout << "Íåâåğíûé ïóíêò.\n";
+            WaitForEnter();
+            break;
+        }
 
-      if (!VerifyFileExternal(signedPath, origPath)) { std::cerr << "ĞŸÑ€Ğ¾Ğ²ĞµÑ€ĞºĞ° Ğ½Ğµ Ğ¿Ñ€Ğ¾Ğ¹Ğ´ĞµĞ½Ğ°.\n"; }
-      WaitForEnter();
-    } else if (c == 3) {
-      // Ğ’Ğ¾ÑÑÑ‚Ğ°Ğ½Ğ¾Ğ²Ğ¸Ñ‚ÑŒ Ğ¸ÑÑ…Ğ¾Ğ´Ğ½Ñ‹Ğ¹ Ğ¸Ğ· .signed
-      std::cout << "\n";
-      std::string paramPath = readPathLine("Ğ£ĞºĞ°Ğ¶Ğ¸Ñ‚Ğµ Ğ¿ÑƒÑ‚ÑŒ Ğº Ñ„Ğ°Ğ¹Ğ»Ñƒ Ğ¿Ğ°Ñ€Ğ°Ğ¼ĞµÑ‚Ñ€Ğ¾Ğ² (Ğ´Ğ»Ñ Ğ·Ğ½Ğ°Ğ½Ğ¸Ñ N): ");
-      if (paramPath.empty() || !LoadParameters(paramPath)) {
-        WaitForEnter();
-        continue;
-      }
-
-      std::string p = readPathLine("Ğ£ĞºĞ°Ğ¶Ğ¸Ñ‚Ğµ Ğ¿ÑƒÑ‚ÑŒ Ğº .signed: ");
-      if (p.empty()) {
-        std::cout << "[!] ĞŸÑƒÑ‚ÑŒ Ğ¿ÑƒÑÑ‚Ğ¾Ğ¹. ĞŸĞ¾Ğ²Ñ‚Ğ¾Ñ€Ğ¸Ñ‚Ğµ.\n";
-        WaitForEnter();
-        continue;
-      }
-      ExtractMessage(p);
-      WaitForEnter();
-    } else {
-      std::cout << "ĞĞµĞ²ĞµÑ€Ğ½Ñ‹Ğ¹ Ğ¿ÑƒĞ½ĞºÑ‚.\n";
-    }
-  }
-  return 0;
+    return 0;
 }
