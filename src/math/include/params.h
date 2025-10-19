@@ -9,7 +9,7 @@ namespace ntru {
     extern int    G_D;
     extern int    G_NORM_BOUND;
     extern double G_ALPHA;
-    extern int    G_SIGMA;
+    extern long double    G_SIGMA;
     extern int    G_MAX_SIGN_ATT;
 
     extern double G_NU;

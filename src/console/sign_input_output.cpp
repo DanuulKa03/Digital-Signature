@@ -11,12 +11,12 @@ namespace fs = std::filesystem;
 
 bool write_sig(const std::string& sigPath, const Signature& S) {
     if (!ensure_parent_dirs(sigPath)) { 
-        cout << "Íå óäàëîñü ñîçäàòü êàòàëîãè äëÿ: " << sigPath << "\n"; 
+        cout << "ÐÐµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ ÑÐ¾Ð·Ð´Ð°Ñ‚ÑŒ ÐºÐ°Ñ‚Ð°Ð»Ð¾Ð³Ð¸ Ð´Ð»Ñ: " << sigPath << "\n"; 
         return false; 
     }
     ofstream out(sigPath, ios::binary | ios::trunc);
     if (!out) { 
-        cerr << "Íå óäàëîñü ñîçäàòü ôàéë ïîäïèñè: " << sigPath << "\n"; 
+        cerr << "ÐÐµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ ÑÐ¾Ð·Ð´Ð°Ñ‚ÑŒ Ñ„Ð°Ð¹Ð» Ð¿Ð¾Ð´Ð¿Ð¸ÑÐ¸: " << sigPath << "\n"; 
         return false; 
     }
     const char magic[4] = { 'S','G','N','2' }; 
@@ -33,19 +33,19 @@ bool write_sig(const std::string& sigPath, const Signature& S) {
     write_poly_u16(S.e);
 
     out.close(); 
-    cout << "Ïîäïèñü ñîõðàíåíà: " << sigPath << "\n"; 
+    cout << "ÐŸÐ¾Ð´Ð¿Ð¸ÑÑŒ ÑÐ¾Ñ…Ñ€Ð°Ð½ÐµÐ½Ð°: " << sigPath << "\n"; 
     return true;
 }
 bool read_sig(const std::string& sigPath, Signature& S) {
     ifstream in(sigPath, ios::binary | ios::ate);
     if (!in) { 
-        cerr << "Íå óäàëîñü îòêðûòü ôàéë ïîäïèñè: " << sigPath << "\n"; 
+        cerr << "ÐÐµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð¾Ñ‚ÐºÑ€Ñ‹Ñ‚ÑŒ Ñ„Ð°Ð¹Ð» Ð¿Ð¾Ð´Ð¿Ð¸ÑÐ¸: " << sigPath << "\n"; 
         return false; 
     }
     streamoff sz = in.tellg(); in.seekg(0, ios::beg);
     char magic[4]; in.read(magic, 4); 
     if (in.gcount() != 4 || memcmp(magic, "SGN2", 4) != 0) { 
-        cout << "Íåâåðíûé ôîðìàò ïîäïèñè\n"; 
+        cout << "ÐÐµÐ²ÐµÑ€Ð½Ñ‹Ð¹ Ñ„Ð¾Ñ€Ð¼Ð°Ñ‚ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐ¸\n"; 
         return false; 
     }
     S.x1.assign(G_N, 0); S.x2.assign(G_N, 0); S.e.assign(G_N, 0);
@@ -61,7 +61,7 @@ bool read_sig(const std::string& sigPath, Signature& S) {
 
     size_t expect = 4 + (size_t)3 * G_N * 2;
     if (sz != (streamoff)expect) { 
-        cout << "Ðàçìåð ïîäïèñè íå ñîâïàäàåò ñ îæèäàíèåì\n"; 
+        cout << "Ð Ð°Ð·Ð¼ÐµÑ€ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐ¸ Ð½Ðµ ÑÐ¾Ð²Ð¿Ð°Ð´Ð°ÐµÑ‚ Ñ Ð¾Ð¶Ð¸Ð´Ð°Ð½Ð¸ÐµÐ¼\n"; 
         return false; 
     }
     return true;

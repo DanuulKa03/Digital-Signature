@@ -24,24 +24,24 @@ using namespace std;
 using namespace ntru;
 namespace fs = std::filesystem;
 
-// ---- Флоу ----
+// ---- Р¤Р»РѕСѓ ----
 static bool KeygenFlow() {
 
-    string params = readPathLine("Укажите путь к файлу параметров: ");
+    string params = readPathLine("РЈРєР°Р¶РёС‚Рµ РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ РїР°СЂР°РјРµС‚СЂРѕРІ: ");
     if (params.empty() || !LoadParametersFile(params)) {
         return false;
     }
 
     if (!keygen()) { 
-        cerr << "Не удалось сгенерировать ключи (попробуйте другие параметры)\n"; 
+        cerr << "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРіРµРЅРµСЂРёСЂРѕРІР°С‚СЊ РєР»СЋС‡Рё (РїРѕРїСЂРѕР±СѓР№С‚Рµ РґСЂСѓРіРёРµ РїР°СЂР°РјРµС‚СЂС‹)\n"; 
         return false; 
     }
 
     while (true) {
-        string where = readPathLine("Куда сохранить ПРИВАТНЫЙ ключ (папка или файл): ");
+        string where = readPathLine("РљСѓРґР° СЃРѕС…СЂР°РЅРёС‚СЊ РџР РР’РђРўРќР«Р™ РєР»СЋС‡ (РїР°РїРєР° РёР»Рё С„Р°Р№Р»): ");
 
         if (where.empty()) { 
-            cout << "[!] Путь пустой. Повторите.\n"; 
+            cout << "[!] РџСѓС‚СЊ РїСѓСЃС‚РѕР№. РџРѕРІС‚РѕСЂРёС‚Рµ.\n"; 
             continue; 
         }
 
@@ -50,10 +50,10 @@ static bool KeygenFlow() {
         }
     }
     while (true) {
-        string where = readPathLine("Куда сохранить ОТКРЫТЫЙ ключ (папка или файл): ");
+        string where = readPathLine("РљСѓРґР° СЃРѕС…СЂР°РЅРёС‚СЊ РћРўРљР Р«РўР«Р™ РєР»СЋС‡ (РїР°РїРєР° РёР»Рё С„Р°Р№Р»): ");
 
         if (where.empty()) { 
-            cout << "[!] Путь пустой. Повторите.\n"; 
+            cout << "[!] РџСѓС‚СЊ РїСѓСЃС‚РѕР№. РџРѕРІС‚РѕСЂРёС‚Рµ.\n"; 
             continue; 
         }
 
@@ -65,26 +65,26 @@ static bool KeygenFlow() {
 }
 static bool SignFlow() {
 
-    string params = readPathLine("Укажите путь к файлу параметров: ");
+    string params = readPathLine("РЈРєР°Р¶РёС‚Рµ РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ РїР°СЂР°РјРµС‚СЂРѕРІ: ");
     if (params.empty() || !LoadParametersFile(params)) {
         return false;
     }
 
-    string priv = readPathLine("Укажите путь к файлу приватного ключа: ");
+    string priv = readPathLine("РЈРєР°Р¶РёС‚Рµ РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ РїСЂРёРІР°С‚РЅРѕРіРѕ РєР»СЋС‡Р°: ");
     if (priv.empty() || !LoadPrivateKey(priv)) {
         return false;
     }
 
 
-    string doc = readPathLine("Укажите путь к файлу, который нужно подписать: ");
+    string doc = readPathLine("РЈРєР°Р¶РёС‚Рµ РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ, РєРѕС‚РѕСЂС‹Р№ РЅСѓР¶РЅРѕ РїРѕРґРїРёСЃР°С‚СЊ: ");
     if (doc.empty()) { 
-        cout << "[!] Путь пустой.\n"; 
+        cout << "[!] РџСѓС‚СЊ РїСѓСЃС‚РѕР№.\n"; 
         return false; 
     }
 
     ifstream in(doc, ios::binary); 
     if (!in) { 
-        cerr << "Не удалось открыть " << doc << "\n"; 
+        cerr << "РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РєСЂС‹С‚СЊ " << doc << "\n"; 
         return false; 
     }
     vector<uint8_t> msg((istreambuf_iterator<char>(in)), istreambuf_iterator<char>());
@@ -92,13 +92,13 @@ static bool SignFlow() {
     Signature S;
 
     if (!sign_strict(msg, S)) 
-    { cerr << "Подпись не удалась (rejection stage)\n"; 
+    { cerr << "РџРѕРґРїРёСЃСЊ РЅРµ СѓРґР°Р»Р°СЃСЊ (rejection stage)\n"; 
     return false; 
     }
 
-    string sigPath = readPathLine("Куда сохранить файл подписи (папка или имя .sig): ");
+    string sigPath = readPathLine("РљСѓРґР° СЃРѕС…СЂР°РЅРёС‚СЊ С„Р°Р№Р» РїРѕРґРїРёСЃРё (РїР°РїРєР° РёР»Рё РёРјСЏ .sig): ");
     if (sigPath.empty()) { 
-        cout << "[!] Путь пустой.\n"; 
+        cout << "[!] РџСѓС‚СЊ РїСѓСЃС‚РѕР№.\n"; 
         return false; 
     }
 
@@ -115,25 +115,25 @@ static bool SignFlow() {
 }
 static bool VerifyFlow() {
 
-    string doc = readPathLine("Укажите путь к исходному файлу (документу): ");
+    string doc = readPathLine("РЈРєР°Р¶РёС‚Рµ РїСѓС‚СЊ Рє РёСЃС…РѕРґРЅРѕРјСѓ С„Р°Р№Р»Сѓ (РґРѕРєСѓРјРµРЅС‚Сѓ): ");
     if (doc.empty() || !fs::exists(doc)) { 
-        cout << "[!] Файл не найден.\n"; 
+        cout << "[!] Р¤Р°Р№Р» РЅРµ РЅР°Р№РґРµРЅ.\n"; 
         return false; 
     }
 
-    string params = readPathLine("Укажите путь к файлу параметров: ");
+    string params = readPathLine("РЈРєР°Р¶РёС‚Рµ РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ РїР°СЂР°РјРµС‚СЂРѕРІ: ");
     if (params.empty() || !LoadParametersFile(params)) {
         return false;
     }
 
-    string pub = readPathLine("Укажите путь к файлу открытого ключа: ");
+    string pub = readPathLine("РЈРєР°Р¶РёС‚Рµ РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ РѕС‚РєСЂС‹С‚РѕРіРѕ РєР»СЋС‡Р°: ");
     if (pub.empty() || !LoadPublicKey(pub)) {
         return false;
     }
 
-    string sigPath = readPathLine("Укажите путь к файлу подписи (.sig): ");
+    string sigPath = readPathLine("РЈРєР°Р¶РёС‚Рµ РїСѓС‚СЊ Рє С„Р°Р№Р»Сѓ РїРѕРґРїРёСЃРё (.sig): ");
     if (sigPath.empty()) { 
-        cout << "[!] Путь пустой.\n"; 
+        cout << "[!] РџСѓС‚СЊ РїСѓСЃС‚РѕР№.\n"; 
         return false; 
     }
 
@@ -151,7 +151,7 @@ static bool VerifyFlow() {
 
     for (int i = 0; i < G_N; ++i) {
         if (eh2.e_mod[i] != S.e[i]) {
-            cout << "Подпись НЕДЕЙСТВИТЕЛЬНА (hash mismatch)\n"; 
+            cout << "РџРѕРґРїРёСЃСЊ РќР•Р”Р•Р™РЎРўР’РРўР•Р›Р¬РќРђ (hash mismatch)\n"; 
             return false;
         }
     }
@@ -164,11 +164,11 @@ static bool VerifyFlow() {
     long double bound = (long double)G_ETA * (long double)G_SIGMA * sqrtl(2.0L * (long double)G_N);
 
     if (sqrtl(x2norm) > bound) { 
-        cout << "Подпись НЕДЕЙСТВИТЕЛЬНА (norm)\n"; 
+        cout << "РџРѕРґРїРёСЃСЊ РќР•Р”Р•Р™РЎРўР’РРўР•Р›Р¬РќРђ (norm)\n"; 
         return false; 
     }
 
-    cout << "Подпись ДЕЙСТВИТЕЛЬНА\n"; return true;
+    cout << "РџРѕРґРїРёСЃСЊ Р”Р•Р™РЎРўР’РРўР•Р›Р¬РќРђ\n"; return true;
 }
 
 int main() {
@@ -191,24 +191,24 @@ int main() {
 
         case 1:
             if (!KeygenFlow())
-                cout << "[!] Генерация не выполнена.\n";
+                cout << "[!] Р“РµРЅРµСЂР°С†РёСЏ РЅРµ РІС‹РїРѕР»РЅРµРЅР°.\n";
             WaitForEnter();
             break;
 
         case 2:
             if (!SignFlow())
-                cout << "[!] Подпись не выполнена.\n";
+                cout << "[!] РџРѕРґРїРёСЃСЊ РЅРµ РІС‹РїРѕР»РЅРµРЅР°.\n";
             WaitForEnter();
             break;
 
         case 3:
             if (!VerifyFlow())
-                cout << "[!] Проверка не выполнена.\n";
+                cout << "[!] РџСЂРѕРІРµСЂРєР° РЅРµ РІС‹РїРѕР»РЅРµРЅР°.\n";
             WaitForEnter();
             break;
 
         default:
-            cout << "Неверный пункт.\n";
+            cout << "РќРµРІРµСЂРЅС‹Р№ РїСѓРЅРєС‚.\n";
             WaitForEnter();
             break;
         }

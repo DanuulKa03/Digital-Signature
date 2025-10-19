@@ -1,5 +1,5 @@
 services:
-  device:
+  alica:
     privileged: true
     cap_add:
       - ALL
@@ -11,3 +11,6 @@ services:
     volumes:
       - .:/firmware
       - ./docker/device/root:/root/
+  bob:
+    cap_add:
+      - ALL

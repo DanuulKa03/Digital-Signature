@@ -1,61 +1,81 @@
 #pragma once
 
 #define NOMINMAX           
+#include <algorithm>
 #include <windows.h>
 
 #include <iostream>
-#include <algorithm>
-#include <limits>
-#include <string>           
-
-
-using namespace std;
 
 void SetupConsole() {
-    HWND console = GetConsoleWindow(); if (!console) return;
-    RECT r; GetWindowRect(console, &r);
-    int cw = 900, ch = 520;
-    int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
-    int x = (sw - cw) / 2, y = (sh - ch) / 2;
-    MoveWindow(console, x, y, cw, ch, TRUE);
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_SCREEN_BUFFER_INFO csbi{}; GetConsoleScreenBufferInfo(hOut, &csbi);
-    SHORT ww = csbi.srWindow.Right - csbi.srWindow.Left + 1;
-    SHORT wh = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
-    SetConsoleScreenBufferSize(hOut, { ww,wh });
-    LONG style = GetWindowLong(console, GWL_STYLE);
-    style &= ~WS_MAXIMIZEBOX; style &= ~WS_SIZEBOX; SetWindowLong(console, GWL_STYLE, style);
+  HWND console = GetConsoleWindow();
+  if (!console) return;
+  RECT r;
+  GetWindowRect(console, &r);
+  int cw = 900, ch = 520;
+  int sw = GetSystemMetrics(SM_CXSCREEN), sh = GetSystemMetrics(SM_CYSCREEN);
+  int x = (sw - cw) / 2, y = (sh - ch) / 2;
+  MoveWindow(console, x, y, cw, ch, TRUE);
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+  CONSOLE_SCREEN_BUFFER_INFO csbi{};
+  GetConsoleScreenBufferInfo(hOut, &csbi);
+  SHORT ww = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+  SHORT wh = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+  SetConsoleScreenBufferSize(hOut, {ww, wh});
+  LONG style = GetWindowLong(console, GWL_STYLE);
+  style &= ~WS_MAXIMIZEBOX;
+  style &= ~WS_SIZEBOX;
+  SetWindowLong(console, GWL_STYLE, style);
 }
-void SetupConsoleZoom(int fontSize) {
-    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_FONT_INFOEX cfi{}; cfi.cbSize = sizeof(cfi);
-    GetCurrentConsoleFontEx(hOut, FALSE, &cfi);
-    cfi.dwFontSize.Y = fontSize; wcscpy_s(cfi.FaceName, L"Consolas");
-    SetCurrentConsoleFontEx(hOut, FALSE, &cfi);
-}
-static inline string ltrim(string s) { const char* ws = " \t\r\n"; auto p = s.find_first_not_of(ws); if (p == string::npos)return ""; return s.substr(p); }
-static inline string rtrim(string s) { const char* ws = " \t\r\n"; auto p = s.find_last_not_of(ws); if (p == string::npos)return ""; return s.substr(0, p + 1); }
-string trim(const string& s) { return rtrim(ltrim(s)); }
 
-string readPathLine(const string& prompt) {
-    cout << prompt;
-    string p; getline(cin, p);
-    if (!p.empty() && p.front() == '"' && p.back() == '"') p = p.substr(1, p.size() - 2);
-    replace(p.begin(), p.end(), '\\', '/');
-    return p;
+void SetupConsoleZoom(int fontSize) {
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+  CONSOLE_FONT_INFOEX cfi{};
+  cfi.cbSize = sizeof(cfi);
+  GetCurrentConsoleFontEx(hOut, FALSE, &cfi);
+  cfi.dwFontSize.Y = fontSize;
+  wcscpy_s(cfi.FaceName, L"Consolas");
+  SetCurrentConsoleFontEx(hOut, FALSE, &cfi);
 }
+
+static inline std::string ltrim(std::string s) {
+  const char *ws = " \t\r\n";
+  auto p = s.find_first_not_of(ws);
+  if (p == std::string::npos)return "";
+  return s.substr(p);
+}
+
+static inline std::string rtrim(std::string s) {
+  const char *ws = " \t\r\n";
+  auto p = s.find_last_not_of(ws);
+  if (p == std::string::npos)return "";
+  return s.substr(0, p + 1);
+}
+
+std::string trim(const std::string &s) { return rtrim(ltrim(s)); }
+
+std::string readPathLine(const std::string &prompt) {
+  std::cout << prompt;
+  std::string p;
+  getline(std::cin, p);
+  if (!p.empty() && p.front() == '"' && p.back() == '"') p = p.substr(1, p.size() - 2);
+  std::ranges::replace(p, '\\', '/');
+  return p;
+}
+
 void PrintMenu() {
-    system("cls");
-    cout << "================================================================================\n";
-    cout << "                             ÑÈÑÒÅÌÀ ÖÈÔÐÎÂÎÉ ÏÎÄÏÈÑÈ (NTRUSign)\n";
-    cout << "================================================================================\n\n";
-    cout << "   [1] Ñãåíåðèðîâàòü êëþ÷è\n";
-    cout << "   [2] Ïîäïèñàòü ôàéë\n";
-    cout << "   [3] Ïðîâåðèòü ïîäïèñü\n";
-    cout << "   [0] Âûõîä\n\n";
-    cout << "================================================================================\n";
-    cout << " Âûáåðèòå ïóíêò ìåíþ: ";
+  system("cls");
+  std::cout << "================================================================================\n";
+  std::cout << "                             Ð¡Ð˜Ð¡Ð¢Ð•ÐœÐ Ð¦Ð˜Ð¤Ð ÐžÐ’ÐžÐ™ ÐŸÐžÐ”ÐŸÐ˜Ð¡Ð˜ (NTRUSign)\n";
+  std::cout << "================================================================================\n\n";
+  std::cout << "   [1] Ð¡Ð³ÐµÐ½ÐµÑ€Ð¸Ñ€Ð¾Ð²Ð°Ñ‚ÑŒ ÐºÐ»ÑŽÑ‡Ð¸\n";
+  std::cout << "   [2] ÐŸÐ¾Ð´Ð¿Ð¸ÑÐ°Ñ‚ÑŒ Ñ„Ð°Ð¹Ð»\n";
+  std::cout << "   [3] ÐŸÑ€Ð¾Ð²ÐµÑ€Ð¸Ñ‚ÑŒ Ð¿Ð¾Ð´Ð¿Ð¸ÑÑŒ\n";
+  std::cout << "   [0] Ð’Ñ‹Ñ…Ð¾Ð´\n\n";
+  std::cout << "================================================================================\n";
+  std::cout << " Ð’Ñ‹Ð±ÐµÑ€Ð¸Ñ‚Ðµ Ð¿ÑƒÐ½ÐºÑ‚ Ð¼ÐµÐ½ÑŽ: ";
 }
-void WaitForEnter() { 
-    cout << "\nÍàæìèòå Enter, ÷òîáû âåðíóòüñÿ â ìåíþ..."; 
-    cin.ignore(numeric_limits<streamsize>::max(), '\n'); }
+
+void WaitForEnter() {
+  std::cout << std::endl << "ÐÐ°Ð¶Ð¼Ð¸Ñ‚Ðµ Enter, Ñ‡Ñ‚Ð¾Ð±Ñ‹ Ð²ÐµÑ€Ð½ÑƒÑ‚ÑŒÑÑ Ð² Ð¼ÐµÐ½ÑŽ...";
+  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+}

@@ -22,7 +22,7 @@ namespace ntru {
         if (y < -(1ll << 31)) {
             y = -(1ll << 31);
         }
-        return (int)y;
+        return static_cast<int>(y);
     }
 
 } // namespace ntru

@@ -8,15 +8,17 @@
 #include "ntru/keys.hpp"
 #include "ntru/ntru.hpp"
 
-#include <iostream>
 #include <filesystem>
+#include <iostream>
+
+#include "arithmetic.h"
 
 bool NTRUSign_once(const Poly &m, Poly &s_out) {
   std::vector<int> fI(G_N, 0), gI(G_N, 0), mI(G_N, 0);
   for (int i = 0; i < G_N; ++i) {
-    fI[i] = center(G_Fkey[i]);
-    gI[i] = center(G_Gkey[i]);
-    mI[i] = center(m[i]);
+    fI[i] = ntru::center(G_Fkey[i]);
+    gI[i] = ntru::center(G_Gkey[i]);
+    mI[i] = ntru::center(m[i]);
   }
 
   std::vector<long long> xA(G_N, 0), yA(G_N, 0);
@@ -24,7 +26,8 @@ bool NTRUSign_once(const Poly &m, Poly &s_out) {
     if (mI[i]) {
       for (int j = 0; j < G_N; ++j) {
         int k = i + j;
-        if (k >= G_N) k -= G_N;
+        if (k >= G_N)
+          k -= G_N;
         xA[k] -= static_cast<long long>(mI[i]) * gI[j];
         yA[k] += static_cast<long long>(mI[i]) * fI[j];
       }
@@ -38,25 +41,32 @@ bool NTRUSign_once(const Poly &m, Poly &s_out) {
 
   std::vector<long long> sA(G_N, 0);
   for (int i = 0; i < G_N; ++i) {
-    if (kx[i]) for (int j = 0; j < G_N; ++j) {
-      int k = i + j;
-      if (k >= G_N) k -= G_N;
-      sA[k] += static_cast<long long>(kx[i]) * fI[j];
-    }
-    if (ky[i]) for (int j = 0; j < G_N; ++j) {
-      int k = i + j;
-      if (k >= G_N) k -= G_N;
-      sA[k] += static_cast<long long>(ky[i]) * gI[j];
-    }
+    if (kx[i])
+      for (int j = 0; j < G_N; ++j) {
+        int k = i + j;
+        if (k >= G_N)
+          k -= G_N;
+        sA[k] += static_cast<long long>(kx[i]) * fI[j];
+      }
+    if (ky[i])
+      for (int j = 0; j < G_N; ++j) {
+        int k = i + j;
+        if (k >= G_N)
+          k -= G_N;
+        sA[k] += static_cast<long long>(ky[i]) * gI[j];
+      }
   }
   s_out.assign(G_N, 0);
-  for (int i = 0; i < G_N; ++i) s_out[i] = static_cast<int>(sA[i]);
+  for (int i = 0; i < G_N; ++i)
+    s_out[i] = static_cast<int>(sA[i]);
 
   Poly sMod(G_N, 0);
-  for (int i = 0; i < G_N; ++i) sMod[i] = modQ(s_out[i]);
+  for (int i = 0; i < G_N; ++i)
+    sMod[i] = modQ(s_out[i]);
   const Poly sh = mulModQ(sMod, G_Hpub);
   std::vector<int> tI(G_N, 0);
-  for (int i = 0; i < G_N; ++i) tI[i] = center(modQ(static_cast<long long>(sh[i]) - m[i]));
+  for (int i = 0; i < G_N; ++i)
+    tI[i] = center(modQ(static_cast<long long>(sh[i]) - m[i]));
 
   long double s2 = 0, t2 = 0;
   for (int i = 0; i < G_N; ++i) {
@@ -64,7 +74,7 @@ bool NTRUSign_once(const Poly &m, Poly &s_out) {
     t2 += static_cast<long double>(tI[i]) * tI[i];
   }
   const long double norm2 = s2 + (G_NU * G_NU) * t2;
-  return (norm2 <=  static_cast<long double>(G_NORM_BOUND) * static_cast<long double>(G_NORM_BOUND));
+  return (norm2 <= static_cast<long double>(G_NORM_BOUND) * static_cast<long double>(G_NORM_BOUND));
 }
 
 bool sign_strict(const std::vector<uint8_t> &msg, Signature &sig) {
@@ -87,12 +97,15 @@ bool sign_strict(const std::vector<uint8_t> &msg, Signature &sig) {
     auto [e_small, e_mod] = H_e_small(z, msg);
 
     Poly sI;
-    if (!NTRUSign_once(e_mod, sI)) continue;
+    if (!NTRUSign_once(e_mod, sI))
+      continue;
     Poly sMod(G_N, 0);
-    for (int i = 0; i < G_N; ++i) sMod[i] = modQ(sI[i]);
+    for (int i = 0; i < G_N; ++i)
+      sMod[i] = modQ(sI[i]);
     Poly sh = mulModQ(sMod, G_Hpub);
     std::vector<int> tI(G_N, 0);
-    for (int i = 0; i < G_N; ++i) tI[i] = center(modQ(static_cast<long long>(sh[i]) - e_mod[i]));
+    for (int i = 0; i < G_N; ++i)
+      tI[i] = center(modQ(static_cast<long long>(sh[i]) - e_mod[i]));
 
     Poly x1(G_N, 0), x2(G_N, 0);
     for (int i = 0; i < G_N; ++i) {
@@ -112,17 +125,24 @@ bool sign_strict(const std::vector<uint8_t> &msg, Signature &sig) {
       xnorm2 += static_cast<long double>(xv1) * xv1 + static_cast<long double>(xv2) * xv2;
     }
     long double exponent = (dot - 0.5L * v2) / sigma2;
-    if (exponent > 700.0L) exponent = 700.0L;
-    if (exponent < -700.0L) exponent = -700.0L;
+    if (exponent > 700.0L)
+      exponent = 700.0L;
+    if (exponent < -700.0L)
+      exponent = -700.0L;
     long double R = expl(exponent);
     long double p = R / G_MACC;
-    if (p > 1.0L) p = 1.0L;
-    if (!(p == p) || !std::isfinite(static_cast<double>(p))) p = 0.0L;
+    if (p > 1.0L)
+      p = 1.0L;
+    if (!(p == p) || !std::isfinite(static_cast<double>(p)))
+      p = 0.0L;
     std::uniform_real_distribution<double> U(0.0, 1.0);
-    if (U(rng) > static_cast<double>(p)) continue;
+    if (U(rng) > static_cast<double>(p))
+      continue;
 
-    long double bound = static_cast<long double>(G_ETA) * static_cast<long double>(G_SIGMA) * sqrtl(2.0L * static_cast<long double>(G_N));
-    if (sqrtl(xnorm2) > bound) continue;
+    long double bound = static_cast<long double>(G_ETA) * static_cast<long double>(G_SIGMA) *
+                        sqrtl(2.0L * static_cast<long double>(G_N));
+    if (sqrtl(xnorm2) > bound)
+      continue;
 
     sig.x1 = std::move(x1);
     sig.x2 = std::move(x2);
@@ -148,10 +168,13 @@ bool write_signed(const std::string &inPath, const std::vector<uint8_t> &msg, co
   try {
     const auto ftime = std::filesystem::last_write_time(inPath);
     ts = static_cast<int64_t>(ftime.time_since_epoch().count());
-  } catch (...) { ts = 0; }
+  } catch (...) {
+    ts = 0;
+  }
   out.write(reinterpret_cast<const char *>(&ts), sizeof(ts));
 
-  if (L) out.write(reinterpret_cast<const char *>(msg.data()), (std::streamsize) L);
+  if (L)
+    out.write(reinterpret_cast<const char *>(msg.data()), (std::streamsize) L);
 
   auto write_poly_u16 = [&](const Poly &P) {
     for (int i = 0; i < G_N; ++i) {
@@ -191,7 +214,8 @@ bool read_signed(const std::string &path, std::pmr::vector<uint8_t> &msg, Signat
     return false;
   }
   msg.resize((size_t) L);
-  if (L > 0) in.read(reinterpret_cast<char *>(msg.data()), (std::streamsize) L);
+  if (L > 0)
+    in.read(reinterpret_cast<char *>(msg.data()), (std::streamsize) L);
 
   auto read_poly_u16 = [&](Poly &P) {
     P.assign(G_N, 0);
