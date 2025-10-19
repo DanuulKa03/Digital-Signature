@@ -1,7 +1,7 @@
 #include "param_input_output.h"
 #include "math/arithmetic.h"
 #include "math/params.h"
-#include "ui.h"
+#include "console_util.h"
 
 #include <fstream>
 #include <iostream>

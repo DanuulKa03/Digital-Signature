@@ -29,6 +29,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     math_ntru
 )
 
+# Пример
+if (WIN32)
+    target_compile_definitions(digital_signature PRIVATE NOMINMAX)
+endif()
+
 #if(WIN32)
 #    target_link_options(digital_signature PRIVATE -static-libstdc++ -static-libgcc)
 #    # Полная статика (по необходимости, может потребовать доп. либы):

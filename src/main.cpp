@@ -18,7 +18,7 @@
 #include "math/sign.h"
 
 #define NOMINMAX
-#include <windows.h>
+#include "console_util.h"
 
 using namespace std;
 using namespace ntru;
