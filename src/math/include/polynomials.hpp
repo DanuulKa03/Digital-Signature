@@ -4,9 +4,9 @@
 
 #pragma once
 
-#include <algorithm>
+#include "types.h"
 
-#include "common.hpp"
+#include <vector>
 
 // GF(2) многочлены (инверсия f) -- конечное поле из двух элементов 0, 1
 
@@ -31,7 +31,7 @@ static Poly2 mul2_nonCirc(const Poly2 &A, const Poly2 &B);
 static void div2_poly(const Poly2 &A, const Poly2 &B, Poly2 &Q, Poly2 &R);
 
 // инверсия f mod 2 (по модулю X^N + 1)
-static bool invertMod2(const Poly &f, Poly &inv2_out);
+static bool invertMod2(const ntru::Poly &f, ntru::Poly &inv2_out);
 
 // поднятие Хензеля до mod Q
-static Poly henselLiftToQ(const Poly &f, const Poly &inv2);
+static ntru::Poly henselLiftToQ(const ntru::Poly &f, const ntru::Poly &inv2);

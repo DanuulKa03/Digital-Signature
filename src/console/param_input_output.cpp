@@ -1,20 +1,20 @@
 #include "param_input_output.h"
 #include "ui.h"
-#include <fstream>
-#include <iostream>
 #include "math/params.h"
 
-using namespace std;
-using namespace ntru;
+#include <iostream>
+#include <fstream>
 
-bool LoadParametersFile(const string& paramPath) {
-    ifstream in(paramPath);
-    if (!in) { 
-        cerr << "Не удалось открыть файл параметров: " << paramPath << "\n"; 
+#include "params.h"
+
+bool LoadParametersFile(const std::string& paramPath) {
+    std::ifstream in(paramPath);
+    if (!in) {
+        std::cerr << "пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: " << paramPath << std::endl;
         return false; 
     }
 
-    string line; 
+    std::string line;
     int have = 0;
     int N = 0, Q = 0, D = 0, NORM_BOUND = 0, ALPHA = 0, SIGMA = 0, MAX_ATT = 1000;
     double NU = 0.0, ETA = 0.0;
@@ -25,14 +25,14 @@ bool LoadParametersFile(const string& paramPath) {
             continue;
         }
 
-        size_t eq = line.find('='); 
-        if (eq == string::npos) {
+        const size_t eq = line.find('=');
+        if (eq == std::string::npos) {
             continue;
         }
 
-        string k = trim(line.substr(0, eq)), v = trim(line.substr(eq + 1));
+        std::string k = trim(line.substr(0, eq)), v = trim(line.substr(eq + 1));
         if (k == "N") { 
-            N = stoi(v); 
+            N = stoi(v);
             have++; 
         }
         else if (k == "Q") { 
@@ -67,14 +67,14 @@ bool LoadParametersFile(const string& paramPath) {
             MAX_ATT = stoi(v); 
         }
     }
-    if (have < 8) { 
-        cerr << "Параметры неполные. Нужны: N,Q,D,NU,NORM_BOUND,ETA,ALPHA,SIGMA\n"; 
+    if (have < 8) {
+        std::cerr << "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅ: N,Q,D,NU,NORM_BOUND,ETA,ALPHA,SIGMA" << std::endl;
         return false; 
     }
-    if (N <= 0 || Q <= 0 || D <= 0 || SIGMA <= 0 || ALPHA < 0) { 
-        cerr << "Некорректные значения параметров.\n"; 
+    if (N <= 0 || Q <= 0 || D <= 0 || SIGMA <= 0 || ALPHA < 0) {
+        std::cerr << "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ." << std::endl;
         return false; 
     }
-    set_params(N, Q, D, NU, NORM_BOUND, ETA, ALPHA, SIGMA, MAX_ATT);
+    ntru::set_params(N, Q, D, NU, NORM_BOUND, ETA, ALPHA, SIGMA, MAX_ATT);
     return true;
 }

@@ -5,7 +5,9 @@ namespace fs = std::filesystem;
 
 bool ensure_parent_dirs(const std::string& fullPath) {
     try {
-        fs::path p(fullPath); fs::path parent = p.parent_path();
+        const fs::path p(fullPath);
+        const fs::path parent = p.parent_path();
+
         if (!parent.empty() && !fs::exists(parent)) return fs::create_directories(parent);
         return true;
     }
@@ -14,15 +16,15 @@ bool ensure_parent_dirs(const std::string& fullPath) {
 
 bool is_directory_like(const std::string& path) {
     try {
-        fs::path p(path);
+        const fs::path p(path);
         if (fs::exists(p)) return fs::is_directory(p);
-        if (!path.empty()) { char c = path.back(); return (c == '/' || c == '\\'); }
+        if (!path.empty()) { const char c = path.back(); return (c == '/' || c == '\\'); }
         return false;
     }
     catch (...) { return false; }
 }
 
-std::string to_target_file_path(std::string userPath,
+std::string to_target_file_path(const std::string &userPath,
     const std::string& defaultName,
     const std::string& defaultExt)
 {

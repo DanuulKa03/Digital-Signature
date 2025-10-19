@@ -1,4 +1,5 @@
 #pragma once
+
 #include <string>
 
 bool SavePrivateKey(const std::string& userPath);

@@ -5,6 +5,8 @@
 #include "../include/arithmetic.hpp"
 #include "../include/polynomials.hpp"
 
+#include "arithmetic.h"
+
 int deg2(const Poly2 &p) {
   for (int i = static_cast<int>(p.a.size()) - 1; i >= 0; --i) if (p.a[i]) return i;
   return -1;
@@ -113,7 +115,7 @@ Poly henselLiftToQ(const Poly &f, const Poly &inv2) {
   for (int i = 0; i < G_N; ++i) inv[i] &= 1;
   int M = 2;
   while (M < G_Q) {
-    Poly t = mulModPow2(inv, f, M);
+    Poly t = ntru::mulModPow2(inv, f, M);
     const int nextM = M << 1;
     const long long mask = static_cast<long long>(nextM) - 1;
     Poly corr(G_N, 0);
@@ -122,7 +124,7 @@ Poly henselLiftToQ(const Poly &f, const Poly &inv2) {
       int v = (2 - ti) & (nextM - 1);
       corr[i] = v;
     }
-    inv = mulModPow2(inv, corr, nextM);
+    inv = ntru::mulModPow2(inv, corr, nextM);
     for (int i = 0; i < G_N; ++i) inv[i] = static_cast<int>(inv[i] & mask);
     M = nextM;
   }

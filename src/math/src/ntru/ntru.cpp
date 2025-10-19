@@ -64,7 +64,7 @@ bool NTRUSign_once(const Poly &m, Poly &s_out) {
     t2 += static_cast<long double>(tI[i]) * tI[i];
   }
   const long double norm2 = s2 + (G_NU * G_NU) * t2;
-  return (norm2 <= static_cast<long double>(G_NORM_BOUND) * static_cast<long double>(G_NORM_BOUND));
+  return (norm2 <=  static_cast<long double>(G_NORM_BOUND) * static_cast<long double>(G_NORM_BOUND));
 }
 
 bool sign_strict(const std::vector<uint8_t> &msg, Signature &sig) {

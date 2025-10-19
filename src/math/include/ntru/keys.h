@@ -1,13 +1,13 @@
 #pragma once
-#include "types.h"
-#include "rng.h"
+#include "../types.h"
+#include "../rng.h"
 
 namespace ntru {
 
-	// ключи
+	// пїЅпїЅпїЅпїЅпїЅ
 	extern Poly G_F, G_G, G_H;
 
-	// генерация тернарного полинома
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	void genTernary(Poly& a, SimpleRng& rng);
 
 	// keygen: F,G -> H = G * F^{-1} (mod q)

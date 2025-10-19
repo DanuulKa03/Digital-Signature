@@ -1,41 +1,52 @@
-#include <algorithm>
-#include <random>
+#include "keys.h"
+#include "params.h"
+#include "arithmetic.h"
+#include <numeric>
 
-#include "arithmetic.hpp"
-#include "polynomials.hpp"
+namespace ntru {
 
-#include "ntru/keys.hpp"
+    Poly G_F, G_G, G_H;
 
-void genTernary(Poly &a) {
-  a.assign(G_N, 0);
-  std::vector<int> idx(G_N);
-  std::iota(idx.begin(), idx.end(), 0);
-  std::random_device rd;
-  std::mt19937 rng(rd());
-  std::ranges::shuffle(idx.begin(), idx.end(), rng);
-  int plus = G_D / 2, minus = G_D - plus;
+    void genTernary(Poly& a, SimpleRng& rng) {
+        a.assign(G_N, 0);
+        std::vector<int> idx(G_N); 
+        std::iota(idx.begin(), idx.end(), 0);
 
-  if (plus == minus) {
-    plus--;
-    minus++;
-  }
+        for (int i = G_N - 1; i > 0; --i) { 
+            uint32_t r = rng() % (i + 1); 
+            std::swap(idx[i], idx[r]); 
+        }
 
-  for (int i = 0; i < plus; ++i)
-    a[idx[i]] = 1;
+        int plus = G_D / 2, minus = G_D - plus; 
+        if (plus == minus) { 
+            ++minus; 
+            --plus; }
 
-  for (int i = plus; i < plus + minus; ++i)
-    a[idx[i]] = G_Q - 1; // -1 mod Q
-}
+        for (int i = 0; i < plus; ++i) {
+            a[idx[i]] = 1;
+        }
 
-bool keygen() {
-  for (int tries = 0; tries < 100; ++tries) {
-    genTernary(G_Fkey);
-    genTernary(G_Gkey);
-    Poly inv2(G_N, 0);
-    if (!invertMod2(G_Fkey, inv2)) continue;
-    const Poly Finv = henselLiftToQ(G_Fkey, inv2);
-    G_Hpub = mulModQ(Finv, G_Gkey);
-    return true;
-  }
-  return false;
-}
+        for (int i = plus; i < plus + minus; ++i) {
+            a[idx[i]] = G_Q - 1; // -1 mod q
+        }
+    }
+
+    bool keygen() {
+        SimpleRng rng;
+        for (int tries = 0; tries < 2000; ++tries) {
+            genTernary(G_F, rng);
+            genTernary(G_G, rng);
+            Poly inv2(G_N, 0);
+
+            if (!invertMod2(G_F, inv2)) {
+                continue;
+            }
+
+            Poly Finv = henselLiftToQ(G_F, inv2);
+            G_H = mulModQ(Finv, G_G);
+            return true;
+        }
+        return false;
+    }
+
+} // namespace ntru

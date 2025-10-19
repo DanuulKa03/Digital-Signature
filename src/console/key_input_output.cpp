@@ -1,5 +1,3 @@
-#include "key_input_output.h"
-#include "util.h"
 #include <fstream>
 #include <iostream>
 #include <filesystem>
@@ -8,59 +6,63 @@
 #include "math/arithmetic.h"
 #include "math/keys.h"
 
-using namespace std;
-using namespace ntru;
+#include "common.hpp"
+#include "key_input_output.h"
+
+#include "arithmetic.h"
+#include "util.h"
+
 namespace fs = std::filesystem;
 
 bool SavePrivateKey(const std::string& userPath) {
-    std::string path = to_target_file_path(userPath, "private.key", ".key");
+    const std::string path = to_target_file_path(userPath, "private.key", ".key");
 
     if (!ensure_parent_dirs(path)) { 
-        cout << "Не удалось создать каталоги для: " << path << "\n"; 
+        std::cout << "пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ: " << path << std::endl;
         return false; 
     }
 
-    ofstream out(path, ios::binary | ios::trunc); 
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
 
     if (!out) { 
-        cout << "Не удалось создать файл приватного ключа: " << path << "\n"; 
+        std::cout << "пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ: " << path << std::endl;
         return false; 
     }
 
-    out << "PRIV1\n" << G_N << "\n";
+    out << "PRIV1" << std::endl << G_N << std::endl;
     for (int i = 0; i < G_N; ++i) { 
         out << G_F[i]; 
         if (i + 1 < G_N) {
             out << ' ';
         }
     } 
-    out << "\n";
+    out << std::endl;
     for (int i = 0; i < G_N; ++i) { 
         out << G_G[i]; 
         if (i + 1 < G_N) {
             out << ' ';
         }
     } 
-    out << "\n";
+    out << std::endl;
     out.close(); 
-    cout << "Приватный ключ сохранён: " << path << "\n"; 
+    std::cout << "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: " << path << std::endl;
     return true;
 }
 bool SavePublicKey(const std::string& userPath) {
 
     std::string path = to_target_file_path(userPath, "public.key", ".key");
     if (!ensure_parent_dirs(path)) { 
-        cout << "Не удалось создать каталоги для: " << path << "\n"; 
+        std::cout << "пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ: " << path << std::endl;
         return false; 
     
     }
-    ofstream out(path, ios::binary | ios::trunc); 
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
     if (!out) { 
-        cout << "Не удалось создать файл открытого ключа: " << path << "\n"; 
+        std::cout << "пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ: " << path << std::endl;
         return false; 
     }
 
-    out << "PUB1\n" << G_N << "\n";
+    out << "PUB1" << std::endl << G_N << std::endl;
     for (int i = 0; i < G_N; ++i) { 
         out << G_H[i]; 
         if (i + 1 < G_N) {
@@ -68,28 +70,27 @@ bool SavePublicKey(const std::string& userPath) {
         }
     }
 
-    out << "\n"; 
+    out << std::endl;
     out.close(); 
-    cout << "Открытый ключ сохранён: " << path << "\n"; 
+    std::cout << "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ: " << path << std::endl;
     return true;
 }
 bool LoadPrivateKey(const std::string& path) {
 
-    ifstream in(path); 
+    std::ifstream in(path);
     if (!in) { 
-        cerr << "Не удалось открыть приватный ключ: " << path << "\n"; 
+        std::cerr << "пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ: " << path << std::endl;
         return false; 
     }
 
-    string hdr; 
-    if (!(in >> hdr) || hdr != "PRIV1") { 
-        cerr << "Неверный формат приватного ключа\n"; 
+    std::string hdr;
+    if (!(in >> hdr) || hdr != "PRIV1") {
+        std::cerr << "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ" << std::endl;
         return false; 
     }
 
-    int n; 
-    if (!(in >> n) || n != G_N) { 
-        cerr << "N не совпадает с параметрами\n"; 
+    if (int n; !(in >> n) || n != G_N) {
+        std::cerr << "N пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ" << std::endl;
         return false; 
     }
 
@@ -99,7 +100,7 @@ bool LoadPrivateKey(const std::string& path) {
     for (int i = 0; i < G_N; ++i) { 
         long long v; 
         if (!(in >> v)) { 
-            cerr << "Недостаточно коэффициентов f\n"; 
+            std::cerr << "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ f\n";
             return false; 
         } 
         G_F[i] = modQ(v); 
@@ -108,15 +109,15 @@ bool LoadPrivateKey(const std::string& path) {
     for (int i = 0; i < G_N; ++i) { 
         long long v; 
         if (!(in >> v)) { 
-            cerr << "Недостаточно коэффициентов g\n"; 
+            std::cerr << "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ g" << std::endl;
             return false; 
         } 
-        G_G[i] = modQ(v); 
+        G_G[i] = ntru::modQ(v);
     }
 
     Poly inv2(G_N, 0); 
     if (!invertMod2(G_F, inv2)) { 
-        cerr << "f не инвертируется по mod 2\n"; 
+        std::cerr << "f пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ mod 2" << std::endl;
         return false; 
     }
 
@@ -125,22 +126,22 @@ bool LoadPrivateKey(const std::string& path) {
     return true;
 }
 bool LoadPublicKey(const std::string& path) {
-    ifstream in(path); 
+    std::ifstream in(path);
 
     if (!in) { 
-        cerr << "Не удалось открыть публичный ключ: " << path << "\n"; 
+        std::cerr << "пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ: " << path << std::endl;
         return false; 
     }
 
-    string hdr; 
-    if (!(in >> hdr) || hdr != "PUB1") { 
-        cerr << "Неверный формат публичного ключа\n"; 
+    std::string hdr;
+    if (!(in >> hdr) || hdr != "PUB1") {
+        std::cerr << "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ" << std::endl;
         return false; 
     }
 
-    int n; 
-    if (!(in >> n) || n != G_N) { 
-        cerr << "N не совпадает с параметрами\n"; 
+    int n;
+    if (!(in >> n) || n != G_N) {
+        std::cerr << "N пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ\n";
         return false; 
     }
 
@@ -148,7 +149,7 @@ bool LoadPublicKey(const std::string& path) {
     for (int i = 0; i < G_N; ++i) { 
         long long v; 
         if (!(in >> v)) { 
-            cerr << "Недостаточно коэффициентов h\n"; 
+            std::cerr << "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ h\n";
             return false; 
         } 
         G_H[i] = modQ(v); 
