@@ -5,20 +5,18 @@
 #include "arithmetic.hpp"
 #include "gauss.hpp"
 
+#include "math/ntru/ntru.hpp"
 #include "ntru/keys.hpp"
-#include "ntru/ntru.hpp"
 
 #include <filesystem>
 #include <iostream>
 
-#include "arithmetic.h"
-
 bool NTRUSign_once(const Poly &m, Poly &s_out) {
   std::vector<int> fI(G_N, 0), gI(G_N, 0), mI(G_N, 0);
   for (int i = 0; i < G_N; ++i) {
-    fI[i] = ntru::center(G_Fkey[i]);
-    gI[i] = ntru::center(G_Gkey[i]);
-    mI[i] = ntru::center(m[i]);
+    fI[i] = center(G_Fkey[i]);
+    gI[i] = center(G_Gkey[i]);
+    mI[i] = center(m[i]);
   }
 
   std::vector<long long> xA(G_N, 0), yA(G_N, 0);

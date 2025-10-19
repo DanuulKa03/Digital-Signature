@@ -1,17 +1,17 @@
-#include "arithmetic.h"
+#include "math/arithmetic.h"
 #include <algorithm>
 
 namespace ntru {
-  int modQ(long long x) {
+
+  int modQ(long long x) noexcept {
     long long q = G_Q;
     x %= q;
-    if (x < 0) {
+    if (x < 0) [[likely]] {
       x += q;
     }
-    return static_cast<int>(x);
+    return (int) x;
   }
-
-  int center(int a) {
+  int center(int a) noexcept {
     int q = G_Q;
     int v = a % q;
     if (v < 0) {
@@ -22,18 +22,16 @@ namespace ntru {
     }
     return v;
   }
+  Poly zeroP() noexcept { return Poly(G_N, 0); }
 
-  Poly zeroP() { return std::vector<int>(G_N, 0); }
-
-  Poly subMod(const Poly &A, const Poly &B) {
+  Poly subMod(std::span<const int> A, std::span<const int> B) noexcept {
     Poly R(G_N, 0);
     for (int i = 0; i < G_N; ++i) {
-      R[i] = modQ(static_cast<long long>(A[i]) - B[i]);
+      R[i] = modQ((long long) A[i] - B[i]);
     }
     return R;
   }
-
-  Poly mulModQ(const Poly &A, const Poly &B) {
+  Poly mulModQ(std::span<const int> A, std::span<const int> B) noexcept {
     std::vector<long long> acc(G_N, 0);
     for (int i = 0; i < G_N; ++i)
       if (A[i]) {
@@ -42,7 +40,7 @@ namespace ntru {
             int k = i + j;
             if (k >= G_N)
               k -= G_N;
-            acc[k] += static_cast<long long>(A[i]) * B[j];
+            acc[k] += (long long) A[i] * B[j];
           }
       }
     Poly R(G_N, 0);
@@ -51,9 +49,8 @@ namespace ntru {
     }
     return R;
   }
-
-  Poly mulModPow2(const Poly &A, const Poly &B, int M) {
-    long long mask = static_cast<long long>(M) - 1;
+  Poly mulModPow2(std::span<const int> A, std::span<const int> B, int M) noexcept {
+    long long mask = (long long) M - 1;
     std::vector<long long> acc(G_N, 0);
     for (int i = 0; i < G_N; ++i)
       if ((A[i] & mask) != 0) {
@@ -62,23 +59,22 @@ namespace ntru {
             int k = i + j;
             if (k >= G_N)
               k -= G_N;
-            acc[k] += static_cast<long long>(A[i]) * B[j];
+            acc[k] += (long long) A[i] * B[j];
           }
       }
     Poly R(G_N, 0);
     for (int i = 0; i < G_N; ++i) {
-      R[i] = static_cast<int>(acc[i] & mask);
+      R[i] = (int) (acc[i] & mask);
     }
     return R;
   }
 
   // GF(2) + Хензель
   Poly2::Poly2() {}
-
-  Poly2::Poly2(const int cap) { a.assign(cap + 1, 0); }
+  Poly2::Poly2(int cap) { a.assign(cap + 1, 0); }
 
   int deg2(const Poly2 &p) {
-    for (int i = static_cast<int>(p.a.size()) - 1; i >= 0; --i) {
+    for (int i = (int) p.a.size() - 1; i >= 0; --i) {
       if (p.a[i]) {
         return i;
       }
@@ -96,12 +92,11 @@ namespace ntru {
   }
 
   Poly2 add2(const Poly2 &A, const Poly2 &B) {
-    int m = static_cast<int>(std::max(A.a.size(), B.a.size()));
+    int m = (int) std::max(A.a.size(), B.a.size());
     Poly2 R(m - 1);
     R.a.assign(m, 0);
     for (int i = 0; i < m; ++i) {
-      uint8_t va = (i < static_cast<int>(A.a.size()) ? A.a[i] : 0),
-              vb = (i < static_cast<int>(B.a.size()) ? B.a[i] : 0);
+      uint8_t va = (i < (int) A.a.size() ? A.a[i] : 0), vb = (i < (int) B.a.size() ? B.a[i] : 0);
       R.a[i] = va ^ vb;
     }
     return trim2(R);
@@ -110,9 +105,9 @@ namespace ntru {
   Poly2 shl2_nonCirc(const Poly2 &A, int k) {
     if (k <= 0)
       return A;
-    Poly2 R(static_cast<int>(A.a.size()) - 1 + k);
+    Poly2 R((int) A.a.size() - 1 + k);
     R.a.assign(A.a.size() + k, 0);
-    for (int i = 0; i < static_cast<int>(A.a.size()); ++i) {
+    for (int i = 0; i < (int) A.a.size(); ++i) {
       if (A.a[i]) {
         R.a[i + k] ^= 1;
       }
@@ -120,36 +115,34 @@ namespace ntru {
     return R;
   }
 
-
   Poly2 mul2_nonCirc(const Poly2 &A, const Poly2 &B) {
-    Poly2 R(static_cast<int>(A.a.size() + B.a.size()));
-    R.a.assign(static_cast<int>(A.a.size() + B.a.size()) + 1, 0);
-    for (int i = 0; i < static_cast<int>(A.a.size()); ++i)
+    Poly2 R((int) (A.a.size() + B.a.size()));
+    R.a.assign((int) (A.a.size() + B.a.size()) + 1, 0);
+    for (int i = 0; i < (int) A.a.size(); ++i)
       if (A.a[i]) {
-        for (int j = 0; j < static_cast<int>(B.a.size()); ++j)
+        for (int j = 0; j < (int) B.a.size(); ++j)
           if (B.a[j]) {
             int pos = i + j;
-            if (pos >= static_cast<int>(R.a.size()))
+            if (pos >= (int) R.a.size())
               R.a.resize(pos + 1, 0);
             R.a[pos] ^= 1;
           }
       }
     return trim2(R);
   }
-
   void div2_poly(const Poly2 &A, const Poly2 &B, Poly2 &Q, Poly2 &R) {
     Poly2 a = A;
-    Q.a.assign(std::max(1, static_cast<int>(A.a.size())), 0);
-    const int dB = deg2(B);
+    Q.a.assign(std::max(1, (int) A.a.size()), 0);
+    int dB = deg2(B);
     if (dB < 0) {
       R = a;
       return;
     }
     while (true) {
-      const int dA = deg2(a);
+      int dA = deg2(a);
       if (dA < dB || dA < 0)
         break;
-      const int s = dA - dB;
+      int s = dA - dB;
       Poly2 S(dA);
       S.a.assign(dA + 1, 0);
       S.a[s] = 1;
@@ -159,12 +152,11 @@ namespace ntru {
     }
     R = a;
   }
-
   bool invertMod2(const Poly &f, Poly &inv2_out) {
     Poly2 F(G_N);
     F.a.assign(G_N + 1, 0);
     for (int i = 0; i < G_N; ++i) {
-      F.a[i] = static_cast<uint8_t>(f[i] & 1);
+      F.a[i] = (uint8_t) (f[i] & 1);
     }
 
     Poly2 P(G_N);
@@ -188,7 +180,7 @@ namespace ntru {
         div2_poly(va, P, Q, R);
         inv2_out.assign(G_N, 0);
         for (int i = 0; i < G_N; ++i) {
-          inv2_out[i] = (i < static_cast<int>(R.a.size()) ? (R.a[i] & 1) : 0);
+          inv2_out[i] = (i < (int) R.a.size() ? (R.a[i] & 1) : 0);
         }
         return true;
       }
@@ -205,7 +197,6 @@ namespace ntru {
       b = R;
     }
   }
-
   Poly henselLiftToQ(const Poly &f, const Poly &inv2) {
     Poly inv = inv2;
     for (int i = 0; i < G_N; ++i) {
@@ -213,9 +204,10 @@ namespace ntru {
     }
     int M = 2;
     while (M < G_Q) {
+
       Poly t = mulModPow2(inv, f, M);
-      const int nextM = M << 1;
-      const long long mask = static_cast<long long>(nextM) - 1;
+      int nextM = M << 1;
+      long long mask = (long long) nextM - 1;
 
       Poly corr(G_N, 0);
       for (int i = 0; i < G_N; ++i) {
@@ -225,7 +217,7 @@ namespace ntru {
 
       inv = mulModPow2(inv, corr, nextM);
       for (int i = 0; i < G_N; ++i) {
-        inv[i] = static_cast<int>(inv[i] & mask);
+        inv[i] = (int) (inv[i] & mask);
       }
       M = nextM;
     }
@@ -235,4 +227,5 @@ namespace ntru {
     }
     return res;
   }
+
 } // namespace ntru

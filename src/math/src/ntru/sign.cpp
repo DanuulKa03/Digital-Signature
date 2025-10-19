@@ -1,12 +1,10 @@
 #include "sign.h"
 #include <cmath>
-#include "arithmetic.h"
-#include "hash.h"
-#include "keys.h"
-#include "params.h"
+#include "math/arithmetic.h"
+#include "math/hash.h"
+#include "math/keys.h"
+#include "math/params.h"
 #include "rng.h"
-
-#include "ntru/keys.h"
 
 namespace ntru {
 
@@ -27,14 +25,14 @@ namespace ntru {
           if (k >= G_N) {
             k -= G_N;
           }
-          xA[k] -= static_cast<long long>(mI[i]) * gI[j];
-          yA[k] += static_cast<long long>(mI[i]) * fI[j];
+          xA[k] -= (long long) mI[i] * gI[j];
+          yA[k] += (long long) mI[i] * fI[j];
         }
       }
     std::vector<int> kx(G_N, 0), ky(G_N, 0);
     for (int i = 0; i < G_N; ++i) {
-      kx[i] = static_cast<int>(llround(static_cast<long double>(xA[i]) / static_cast<long double>(G_Q)));
-      ky[i] = static_cast<int>(llround(static_cast<long double>(yA[i]) / static_cast<long double>(G_Q)));
+      kx[i] = (int) llround((long double) xA[i] / (long double) G_Q);
+      ky[i] = (int) llround((long double) yA[i] / (long double) G_Q);
     }
     std::vector<long long> sA(G_N, 0);
     for (int i = 0; i < G_N; ++i) {
@@ -44,7 +42,7 @@ namespace ntru {
           if (k >= G_N) {
             k -= G_N;
           }
-          sA[k] += static_cast<long long>(kx[i]) * fI[j];
+          sA[k] += (long long) kx[i] * fI[j];
         }
       if (ky[i])
         for (int j = 0; j < G_N; ++j) {
@@ -52,13 +50,13 @@ namespace ntru {
           if (k >= G_N) {
             k -= G_N;
           }
-          sA[k] += static_cast<long long>(ky[i]) * gI[j];
+          sA[k] += (long long) ky[i] * gI[j];
         }
     }
     s_out.assign(G_N, 0);
 
     for (int i = 0; i < G_N; ++i) {
-      s_out[i] = static_cast<int>(sA[i]);
+      s_out[i] = (int) sA[i];
     }
 
     Poly sMod(G_N, 0);
@@ -69,19 +67,19 @@ namespace ntru {
     Poly sh = mulModQ(sMod, G_H);
     std::vector<int> tI(G_N, 0);
     for (int i = 0; i < G_N; ++i) {
-      tI[i] = center(modQ(static_cast<long long>(sh[i]) - m[i]));
+      tI[i] = center(modQ((long long) sh[i] - m[i]));
     }
 
     long double s2 = 0, t2 = 0;
 
     for (int i = 0; i < G_N; ++i) {
-      s2 += static_cast<long double>(s_out[i]) * s_out[i];
-      t2 += static_cast<long double>(tI[i]) * tI[i];
+      s2 += (long double) s_out[i] * s_out[i];
+      t2 += (long double) tI[i] * tI[i];
     }
 
-    const long double norm2 = s2 + (G_NU * G_NU) * t2;
+    long double norm2 = s2 + (G_NU * G_NU) * t2;
 
-    return (norm2 <= static_cast<long double>(G_NORM_BOUND) * static_cast<long double>(G_NORM_BOUND));
+    return (norm2 <= (long double) G_NORM_BOUND * (long double) G_NORM_BOUND);
   }
 
   bool sign_strict(const std::vector<uint8_t> &msg, Signature &sig) {
@@ -90,8 +88,8 @@ namespace ntru {
       // 1) y ~ D_sigma
       Poly y1I(G_N, 0), y2I(G_N, 0);
       for (int i = 0; i < G_N; ++i) {
-        y1I[i] = sample_gauss_int(rng, G_SIGMA);
-        y2I[i] = sample_gauss_int(rng, G_SIGMA);
+        y1I[i] = sample_gauss_int(rng, (double) G_SIGMA);
+        y2I[i] = sample_gauss_int(rng, (double) G_SIGMA);
       }
       Poly y1(G_N, 0), y2(G_N, 0);
       for (int i = 0; i < G_N; ++i) {
@@ -117,7 +115,7 @@ namespace ntru {
       Poly sh = mulModQ(sMod, G_H);
       std::vector<int> tI(G_N, 0);
       for (int i = 0; i < G_N; ++i) {
-        tI[i] = center(modQ(static_cast<long long>(sh[i]) - eh.e_mod[i]));
+        tI[i] = center(modQ((long long) sh[i] - eh.e_mod[i]));
       }
 
       // 4) (x1,x2) = (y1 - s,  y2 - t - e_small)
@@ -130,7 +128,7 @@ namespace ntru {
       }
 
       // 5) rejection
-      long double sigma2 = static_cast<long double>(G_SIGMA) * static_cast<long double>(G_SIGMA);
+      long double sigma2 = (long double) G_SIGMA * (long double) G_SIGMA;
       long double dot = 0.0L, v2 = 0.0L, xnorm2 = 0.0L;
       for (int i = 0; i < G_N; ++i) {
         int xv1 = center(x1[i]), xv2 = center(x2[i]);

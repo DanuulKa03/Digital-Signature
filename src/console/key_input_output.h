@@ -1,8 +1,9 @@
 #pragma once
 
 #include <string>
+#include "math/arithmetic.h"
 
-bool SavePrivateKey(const std::string& userPath);
-bool SavePublicKey(const std::string& userPath);
-bool LoadPrivateKey(const std::string& path);
-bool LoadPublicKey(const std::string& path);
+[[nodiscard]] bool SavePrivateKey(const std::string &userPath);
+[[nodiscard]] bool SavePublicKey(const std::string &userPath);
+[[nodiscard]] bool LoadPrivateKey(const std::string &path);
+[[nodiscard]] bool LoadPublicKey(const std::string &path);

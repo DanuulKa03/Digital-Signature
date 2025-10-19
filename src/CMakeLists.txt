@@ -19,6 +19,8 @@ add_executable(digital_signature
         console/settings.hpp
 )
 
+target_link_libraries(digital_signature PRIVATE math_ntru)
+
 target_include_directories(${PROJECT_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -42,3 +44,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 #            COMMAND_EXPAND_LISTS
 #    )
 #endif()
+target_compile_options(digital_signature PRIVATE -Wall -Wextra -Wpedantic)
+
+target_include_directories(digital_signature PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/math/include)

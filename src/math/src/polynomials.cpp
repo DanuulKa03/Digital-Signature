@@ -2,20 +2,23 @@
 // Created by Daniil Kazakov on 04.10.2025.
 //
 
-#include "../include/arithmetic.hpp"
 #include "../include/polynomials.hpp"
+#include "../include/arithmetic.hpp"
 
-#include "arithmetic.h"
+#include "math/arithmetic.h"
 
 int deg2(const Poly2 &p) {
-  for (int i = static_cast<int>(p.a.size()) - 1; i >= 0; --i) if (p.a[i]) return i;
+  for (int i = static_cast<int>(p.a.size()) - 1; i >= 0; --i)
+    if (p.a[i])
+      return i;
   return -1;
 }
 
 Poly2 trim2(const Poly2 &p) {
   const int d = deg2(p);
   Poly2 r(std::ranges::max(d, 0));
-  for (int i = 0; i <= d; ++i) r.a[i] = p.a[i];
+  for (int i = 0; i <= d; ++i)
+    r.a[i] = p.a[i];
   return r;
 }
 
@@ -32,10 +35,13 @@ Poly2 add2(const Poly2 &A, const Poly2 &B) {
 }
 
 Poly2 shl2_nonCirc(const Poly2 &A, int k) {
-  if (k <= 0) return A;
+  if (k <= 0)
+    return A;
   Poly2 R(static_cast<int>(A.a.size()) - 1 + k);
   R.a.assign(A.a.size() + k, 0);
-  for (int i = 0; i < static_cast<int>(A.a.size()); ++i) if (A.a[i]) R.a[i + k] ^= 1;
+  for (int i = 0; i < static_cast<int>(A.a.size()); ++i)
+    if (A.a[i])
+      R.a[i + k] ^= 1;
   return R;
 }
 
@@ -46,7 +52,8 @@ Poly2 mul2_nonCirc(const Poly2 &A, const Poly2 &B) {
     if (A.a[i])
       for (int j = 0; j < static_cast<int>(B.a.size()); ++j)
         if (B.a[j]) {
-          if (i + j >= static_cast<int>(R.a.size())) R.a.resize(i + j + 1, 0);
+          if (i + j >= static_cast<int>(R.a.size()))
+            R.a.resize(i + j + 1, 0);
           R.a[i + j] ^= 1;
         }
   return trim2(R);
@@ -62,7 +69,8 @@ void div2_poly(const Poly2 &A, const Poly2 &B, Poly2 &Q, Poly2 &R) {
   }
   while (true) {
     const int dA = deg2(a);
-    if (dA < dB || dA < 0) break;
+    if (dA < dB || dA < 0)
+      break;
     const int s = dA - dB;
     Poly2 S(dA);
     S.a.assign(dA + 1, 0);
@@ -77,7 +85,8 @@ void div2_poly(const Poly2 &A, const Poly2 &B, Poly2 &Q, Poly2 &R) {
 bool invertMod2(const Poly &f, Poly &inv2_out) {
   Poly2 F(G_N);
   F.a.assign(G_N + 1, 0);
-  for (int i = 0; i < G_N; ++i) F.a[i] = (uint8_t)(f[i] & 1);
+  for (int i = 0; i < G_N; ++i)
+    F.a[i] = (uint8_t) (f[i] & 1);
   Poly2 P(G_N);
   P.a.assign(G_N + 1, 0);
   P.a[0] = 1;
@@ -90,11 +99,13 @@ bool invertMod2(const Poly &f, Poly &inv2_out) {
   vb.a = {1};
   while (true) {
     if (deg2(b) < 0) {
-      if (deg2(a) != 0 || a.a[0] != 1) return false;
+      if (deg2(a) != 0 || a.a[0] != 1)
+        return false;
       Poly2 Q, R;
       div2_poly(va, P, Q, R);
       inv2_out.assign(G_N, 0);
-      for (int i = 0; i < G_N; ++i) inv2_out[i] = (i < static_cast<int>(R.a.size()) ? (R.a[i] & 1) : 0);
+      for (int i = 0; i < G_N; ++i)
+        inv2_out[i] = (i < static_cast<int>(R.a.size()) ? (R.a[i] & 1) : 0);
       return true;
     }
     Poly2 Q, R;
@@ -112,7 +123,8 @@ bool invertMod2(const Poly &f, Poly &inv2_out) {
 
 Poly henselLiftToQ(const Poly &f, const Poly &inv2) {
   Poly inv = inv2;
-  for (int i = 0; i < G_N; ++i) inv[i] &= 1;
+  for (int i = 0; i < G_N; ++i)
+    inv[i] &= 1;
   int M = 2;
   while (M < G_Q) {
     Poly t = ntru::mulModPow2(inv, f, M);
@@ -125,10 +137,12 @@ Poly henselLiftToQ(const Poly &f, const Poly &inv2) {
       corr[i] = v;
     }
     inv = ntru::mulModPow2(inv, corr, nextM);
-    for (int i = 0; i < G_N; ++i) inv[i] = static_cast<int>(inv[i] & mask);
+    for (int i = 0; i < G_N; ++i)
+      inv[i] = static_cast<int>(inv[i] & mask);
     M = nextM;
   }
   Poly res(G_N, 0);
-  for (int i = 0; i < G_N; ++i) res[i] = inv[i] & (G_Q - 1);
+  for (int i = 0; i < G_N; ++i)
+    res[i] = inv[i] & (G_Q - 1);
   return res;
 }

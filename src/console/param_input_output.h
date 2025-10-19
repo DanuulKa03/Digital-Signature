@@ -1,4 +1,5 @@
 #pragma once
 #include <string>
+#include "math/arithmetic.h"
 
-bool LoadParametersFile(const std::string& paramPath);
+[[nodiscard]] bool LoadParametersFile(const std::string &paramPath);

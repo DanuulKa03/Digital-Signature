@@ -1,14 +1,20 @@
 #pragma once
 
-#define NOMINMAX           
-#include <algorithm>
+#define NOMINMAX
 #include <windows.h>
+#include "math/arithmetic.h"
 
+#include <algorithm>
 #include <iostream>
+#include <limits>
+#include <string>
+
+using namespace std;
 
 void SetupConsole() {
   HWND console = GetConsoleWindow();
-  if (!console) return;
+  if (!console)
+    return;
   RECT r;
   GetWindowRect(console, &r);
   int cw = 900, ch = 520;
@@ -26,7 +32,6 @@ void SetupConsole() {
   style &= ~WS_SIZEBOX;
   SetWindowLong(console, GWL_STYLE, style);
 }
-
 void SetupConsoleZoom(int fontSize) {
   HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
   CONSOLE_FONT_INFOEX cfi{};
@@ -36,46 +41,44 @@ void SetupConsoleZoom(int fontSize) {
   wcscpy_s(cfi.FaceName, L"Consolas");
   SetCurrentConsoleFontEx(hOut, FALSE, &cfi);
 }
-
-static inline std::string ltrim(std::string s) {
+static inline string ltrim(string s) {
   const char *ws = " \t\r\n";
   auto p = s.find_first_not_of(ws);
-  if (p == std::string::npos)return "";
+  if (p == string::npos)
+    return "";
   return s.substr(p);
 }
-
-static inline std::string rtrim(std::string s) {
+static inline string rtrim(string s) {
   const char *ws = " \t\r\n";
   auto p = s.find_last_not_of(ws);
-  if (p == std::string::npos)return "";
+  if (p == string::npos)
+    return "";
   return s.substr(0, p + 1);
 }
+string trim(const string &s) { return rtrim(ltrim(s)); }
 
-std::string trim(const std::string &s) { return rtrim(ltrim(s)); }
-
-std::string readPathLine(const std::string &prompt) {
-  std::cout << prompt;
-  std::string p;
-  getline(std::cin, p);
-  if (!p.empty() && p.front() == '"' && p.back() == '"') p = p.substr(1, p.size() - 2);
-  std::ranges::replace(p, '\\', '/');
+string readPathLine(const string &prompt) {
+  cout << prompt;
+  string p;
+  getline(cin, p);
+  if (!p.empty() && p.front() == '"' && p.back() == '"')
+    p = p.substr(1, p.size() - 2);
+  replace(p.begin(), p.end(), '\\', '/');
   return p;
 }
-
 void PrintMenu() {
   system("cls");
-  std::cout << "================================================================================\n";
-  std::cout << "                             СИСТЕМА ЦИФРОВОЙ ПОДПИСИ (NTRUSign)\n";
-  std::cout << "================================================================================\n\n";
-  std::cout << "   [1] Сгенерировать ключи\n";
-  std::cout << "   [2] Подписать файл\n";
-  std::cout << "   [3] Проверить подпись\n";
-  std::cout << "   [0] Выход\n\n";
-  std::cout << "================================================================================\n";
-  std::cout << " Выберите пункт меню: ";
+  cout << "================================================================================\n";
+  cout << "                             СИСТЕМА ЦИФРОВОЙ ПОДПИСИ (NTRUSign)\n";
+  cout << "================================================================================\n\n";
+  cout << "   [1] Сгенерировать ключи\n";
+  cout << "   [2] Подписать файл\n";
+  cout << "   [3] Проверить подпись\n";
+  cout << "   [0] Выход\n\n";
+  cout << "================================================================================\n";
+  cout << " Выберите пункт меню: ";
 }
-
 void WaitForEnter() {
-  std::cout << std::endl << "Нажмите Enter, чтобы вернуться в меню...";
-  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+  cout << "\nНажмите Enter, чтобы вернуться в меню...";
+  cin.ignore(numeric_limits<streamsize>::max(), '\n');
 }

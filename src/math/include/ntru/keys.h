@@ -1,16 +1,16 @@
 #pragma once
-#include "../types.h"
 #include "../rng.h"
+#include "../types.h"
 
 namespace ntru {
 
-	// �����
-	extern Poly G_F, G_G, G_H;
+  // �����
+  extern Poly G_F, G_G, G_H;
 
-	// ��������� ���������� ��������
-	void genTernary(Poly& a, SimpleRng& rng);
+  // ��������� ���������� ��������
+  void genTernary(Poly &a, SimpleRng &rng);
 
-	// keygen: F,G -> H = G * F^{-1} (mod q)
-	bool keygen();
+  // keygen: F,G -> H = G * F^{-1} (mod q)
+  [[nodiscard]] boolkeygen();
 
 } // namespace ntru
