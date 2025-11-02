@@ -4,7 +4,7 @@ project(digital_signature)
 set(CXX_STANDARD 23)
 set(CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Core5Compat)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 
 add_executable(digital_signature
         src/main.cpp
@@ -19,7 +19,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         Qt6::Core
-        Qt6::Core5Compat
 )
 
 #if(WIN32)
