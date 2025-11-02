@@ -1,13 +1,22 @@
 services:
-  device:
-    privileged: true
-    cap_add:
-      - ALL
-    ipc: host
-    working_dir: /firmware
+  alica:
     build:
       dockerfile: ./Dockerfile
-      context: .
-    volumes:
-      - .:/firmware
-      - ./docker/device/root:/root/
+    entrypoint: tail -f /dev/null   # Это заставит контейнер работать вечно
+    networks:
+      - isolated_network
+    stdin_open: true                 # Для поддержания терминала открытым (если нужно работать через контейнер)
+    tty: true                        # Для обеспечения возможности работать в терминале
+
+  bob:
+    build:
+      dockerfile: ./Dockerfile
+    entrypoint: tail -f /dev/null   # Это заставит контейнер работать вечно
+    networks:
+      - isolated_network
+    stdin_open: true                 # Для поддержания терминала открытым (если нужно работать через контейнер)
+    tty: true                        # Для обеспечения возможности работать в терминале
+
+networks:
+  isolated_network:
+    driver: bridge

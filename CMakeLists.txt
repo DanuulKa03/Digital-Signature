@@ -1,22 +1,16 @@
 cmake_minimum_required(VERSION 3.28)
 project(digital_signature)
 
-option(FLAG_GUI "Запус приложения в с GUI" OFF)
+set(CXX_STANDARD 23)
+set(CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_CXX_STANDARD 23)
-
-if (FLAG_GUI)
-    find_package(Qt5 COMPONENTS Core Gui Qml Sql Network REQUIRED)
-endif ()
-
-add_subdirectory(math)
+find_package(Qt6 REQUIRED COMPONENTS Core Core5Compat)
 
 add_executable(digital_signature
-        main.cpp
-        console/utils.cpp
-        console/utils.hpp
-        console/settings.cpp
-        console/settings.hpp
+        src/main.cpp
+        src/controller/controller.cpp
+        src/model/model.cpp
+        src/view/view.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -24,7 +18,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    math_ntru
+        Qt6::Core
+        Qt6::Core5Compat
 )
 
 #if(WIN32)
