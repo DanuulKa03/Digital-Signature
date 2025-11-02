@@ -3,7 +3,6 @@
 #include <QCryptographicHash>
 #include <QFile>
 #include <QRandomGenerator>
-#include <QRegExp>
 #include <QRegularExpression>
 
 #include <algorithm>
