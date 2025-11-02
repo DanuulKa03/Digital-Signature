@@ -9,3 +9,6 @@
 /cmake/toolchain-mingw64-gcc.cmake
 /cmake-build-debug/
 /docker/device/
+/CMakeFiles/
+/.cmake/
+/.idea/
