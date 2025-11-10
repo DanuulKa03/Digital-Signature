@@ -1,157 +1,172 @@
 #include "src/controller/controller.h"
-#include <QFile>
+#include "src/model/model.h"
+#include "src/view/view.h"
+#include <QCoreApplication>
 
-NtruController::NtruController() : paramsLoaded(false) {
-    // Initialize flag
-    paramsLoaded = false;
+Controller::Controller(Model *model, View *view, QObject *parent)
+        : QObject(parent), m_model(model), m_view(view)
+{
+    if (m_model && m_view) {
+        connect(m_model, &Model::operationCompleted, m_view, &View::onOperationCompleted);
+        connect(m_model, &Model::errorOccurred, m_view, &View::onErrorOccurred);
+    }
 }
 
-void NtruController::run() {
+void Controller::run()
+{
     while (true) {
-        ConsoleView::displayMenu();
-        QString choiceStr = ConsoleView::prompt("Enter your choice: ");
-        if (choiceStr.isEmpty()) {
-            // If input was closed or empty, exit
+        m_view->showMenu();
+        int choice = 0;
+        bool ok = false;
+
+        while (!ok) {
+            QString input = m_view->readLine();
+            choice = input.toInt(&ok);
+            if (!ok) {
+                m_view->showError("Please enter a number");
+                m_view->showMenu();
+            }
+        }
+
+        if (choice == 0) {
+            m_view->showMessage("Exiting program...");
+            QCoreApplication::quit();
             break;
         }
-        bool ok = false;
-        int choice = choiceStr.toInt(&ok);
-        if (!ok) {
-            ConsoleView::prompt("Invalid input. Please enter a number from the menu.");
-            continue;
-        }
-        switch (choice) {
-            case 1:
-                handleKeyGeneration();
-                break;
-            case 2:
-                handleSigning();
-                break;
-            case 3:
-                handleVerification();
-                break;
-            case 0:
-                ConsoleView::showMessage("Exiting application.");
-                return;
-            default:
-                ConsoleView::showMessage("Invalid choice. Please select 1, 2, 3, or 0.");
-        }
+
+        handleMenuChoice(choice);
+        waitForEnter();
     }
 }
 
-void NtruController::handleKeyGeneration() {
-    QString paramPath = ConsoleView::prompt("Enter path to parameter file: ");
-    if (paramPath.isEmpty()) {
-        return;
+void Controller::handleMenuChoice(int choice)
+{
+    switch (choice) {
+        case 1:
+            handleKeyGeneration();
+            break;
+        case 2:
+            handleSignFile();
+            break;
+        case 3:
+            handleVerifySignature();
+            break;
+        default:
+            m_view->showError("Invalid menu option");
+            break;
     }
-    NtruParams newParams{};
-    if (!NtruModel::loadParameters(paramPath, newParams)) {
-        ConsoleView::showMessage("Failed to load parameters from file.");
-        return;
-    }
-    // Generate keys
-    NtruPrivKey priv;
-    NtruPubKey pub;
-    if (!NtruModel::generateKeyPair(newParams, priv, pub)) {
-        ConsoleView::showMessage("Key generation failed (could not find invertible polynomial).");
-        return;
-    }
-    // Ask for output file paths
-    QString privPath = ConsoleView::prompt("Enter output file path for Private Key: ");
-    if (privPath.isEmpty()) {
-        return;
-    }
-    const QString pubPath = ConsoleView::prompt("Enter output file path for Public Key: ");
-    if (pubPath.isEmpty()) {
-        return;
-    }
-    if (!NtruModel::savePrivateKey(privPath, newParams, priv)) {
-        ConsoleView::showMessage("Error saving private key to file.");
-        return;
-    }
-    if (!NtruModel::savePublicKey(pubPath, newParams, pub)) {
-        ConsoleView::showMessage("Error saving public key to file.");
-        return;
-    }
-    // Store loaded params for subsequent operations (if needed)
-    params = newParams;
-    paramsLoaded = true;
-    ConsoleView::showMessage("Key pair generated and saved successfully.");
 }
 
-void NtruController::handleSigning() {
-  const QString paramPath = ConsoleView::prompt("Enter path to parameter file: ");
-    if (paramPath.isEmpty()) {
+void Controller::handleKeyGeneration()
+{
+    QString paramsFile = getFilePath("Enter parameters file path: ");
+    if (paramsFile.isEmpty()) {
+        m_view->showError("Parameters file path cannot be empty");
         return;
     }
-    NtruParams signParams{};
-    if (!NtruModel::loadParameters(paramPath, signParams)) {
-        ConsoleView::showMessage("Failed to load parameters. Ensure file contains N, q, d, ν.");
+
+    if (!m_model->loadParameters(paramsFile)) {
+        m_view->showError(m_model->getLastError());
         return;
     }
-    const QString privPath = ConsoleView::prompt("Enter path to Private Key file: ");
-    if (privPath.isEmpty()) {
+
+    if (!m_model->generateKeys()) {
+        m_view->showError(m_model->getLastError());
         return;
     }
-    NtruPrivKey priv;
-    if (!NtruModel::loadPrivateKey(privPath, signParams, priv)) {
-        ConsoleView::showMessage("Failed to load private key from file.");
+
+    QString privKeyPath = getFilePath("Save private key to: ");
+    if (privKeyPath.isEmpty() || !m_model->savePrivateKey(privKeyPath)) {
+        m_view->showError("Failed to save private key");
         return;
     }
-    const QString msgPath = ConsoleView::prompt("Enter path to the message file to sign: ");
-    if (msgPath.isEmpty()) {
+
+    QString pubKeyPath = getFilePath("Save public key to: ");
+    if (pubKeyPath.isEmpty() || !m_model->savePublicKey(pubKeyPath)) {
+        m_view->showError("Failed to save public key");
         return;
     }
-    // Check that message file exists
-    if (!QFile::exists(msgPath)) {
-        ConsoleView::showMessage("Message file not found.");
+}
+
+void Controller::handleSignFile()
+{
+    QString paramsFile = getFilePath("Enter parameters file path: ");
+    if (paramsFile.isEmpty() || !m_model->loadParameters(paramsFile)) {
+        m_view->showError("Failed to load parameters");
         return;
     }
-    const QString sigPath = ConsoleView::prompt("Enter output file path for the signature: ");
+
+    QString privKeyPath = getFilePath("Enter private key path: ");
+    if (privKeyPath.isEmpty() || !m_model->loadPrivateKey(privKeyPath)) {
+        m_view->showError("Failed to load private key");
+        return;
+    }
+
+    QString filePath = getFilePath("Enter file to sign: ");
+    if (filePath.isEmpty()) {
+        m_view->showError("File path cannot be empty");
+        return;
+    }
+
+    Model::Signature signature;
+    if (!m_model->signFile(filePath, signature)) {
+        m_view->showError("Failed to sign file");
+        return;
+    }
+
+    QString sigPath = getFilePath("Save signature to: ");
+    if (sigPath.isEmpty() || !m_model->saveSignature(sigPath, signature)) {
+        m_view->showError("Failed to save signature");
+        return;
+    }
+}
+
+void Controller::handleVerifySignature()
+{
+    QString filePath = getFilePath("Enter original file path: ");
+    if (filePath.isEmpty()) {
+        m_view->showError("File path cannot be empty");
+        return;
+    }
+
+    QString paramsFile = getFilePath("Enter parameters file path: ");
+    if (paramsFile.isEmpty() || !m_model->loadParameters(paramsFile)) {
+        m_view->showError("Failed to load parameters");
+        return;
+    }
+
+    QString pubKeyPath = getFilePath("Enter public key path: ");
+    if (pubKeyPath.isEmpty() || !m_model->loadPublicKey(pubKeyPath)) {
+        m_view->showError("Failed to load public key");
+        return;
+    }
+
+    QString sigPath = getFilePath("Enter signature file path: ");
     if (sigPath.isEmpty()) {
+        m_view->showError("Signature path cannot be empty");
         return;
     }
-    if (NtruModel::signMessage(signParams, priv, msgPath, sigPath)) {
-        ConsoleView::showMessage("File signed successfully. Signature saved to: " + sigPath);
-    } else {
-        ConsoleView::showMessage("Signing failed.");
+
+    Model::Signature signature;
+    if (!m_model->loadSignature(sigPath, signature)) {
+        m_view->showError("Failed to load signature");
+        return;
     }
+
+    if (!m_model->verifySignature(filePath, signature)) {
+        m_view->showError("Signature is invalid");
+        return;
+    }
+
+    m_view->showMessage("Signature is VALID");
 }
 
-void NtruController::handleVerification() {
-  const QString paramPath = ConsoleView::prompt("Enter path to parameter file: ");
-    if (paramPath.isEmpty()) {
-        return;
-    }
-    NtruParams verParams{};
-    if (!NtruModel::loadParameters(paramPath, verParams)) {
-        ConsoleView::showMessage("Failed to load parameters file.");
-        return;
-    }
-    const QString pubPath = ConsoleView::prompt("Enter path to Public Key file: ");
-    if (pubPath.isEmpty()) {
-        return;
-    }
-    NtruPubKey pub;
-    if (!NtruModel::loadPublicKey(pubPath, verParams, pub)) {
-        ConsoleView::showMessage("Failed to load public key from file.");
-        return;
-    }
-    const QString msgPath = ConsoleView::prompt("Enter path to the original message file: ");
-    if (msgPath.isEmpty()) {
-        return;
-    }
-    if (!QFile::exists(msgPath)) {
-        ConsoleView::showMessage("Message file not found.");
-        return;
-    }
-    const QString sigPath = ConsoleView::prompt("Enter path to the signature file: ");
-    if (sigPath.isEmpty()) {
-        return;
-    }
-    bool valid = false;
-    if (NtruModel::verifyMessage(verParams, pub, msgPath, sigPath)) {
-        valid = true;
-    }
-    ConsoleView::showVerificationResult(valid);
+QString Controller::getFilePath(const QString& prompt)
+{
+    return m_view->readLine(prompt);
+}
+
+void Controller::waitForEnter()
+{
+    m_view->readLine("\nPress Enter to continue...");
 }

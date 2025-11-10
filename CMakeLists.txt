@@ -4,6 +4,7 @@ project(digital_signature)
 set(CXX_STANDARD 23)
 set(CXX_STANDARD_REQUIRED ON)
 
+list(APPEND CMAKE_PREFIX_PATH "C:/Qt/6.9.3/mingw_64/lib/cmake")
 find_package(Qt6 REQUIRED COMPONENTS Core)
 
 add_executable(digital_signature
@@ -11,6 +12,10 @@ add_executable(digital_signature
         src/controller/controller.cpp
         src/model/model.cpp
         src/view/view.cpp
+        src/controller/controller.h
+        src/model/model.h
+        src/view/view.h
+
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

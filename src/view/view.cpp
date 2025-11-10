@@ -1,42 +1,63 @@
 #include "src/view/view.h"
-#include <QTextStream>
 #include <iostream>
 
-void ConsoleView::displayMenu() {
-    QTextStream qout(stdout);
-    qout << "================ NTRUSign Console Application ================\n";
-    qout << "Select an option:\n";
-    qout << "1. Generate keys (Key Generation)\n";
-    qout << "2. Sign a file (Generate Signature)\n";
-    qout << "3. Verify a signature\n";
-    qout << "0. Exit\n";
-    qout.flush();
+View::View(QObject *parent) : QObject(parent), m_out(stdout), m_in(stdin)
+{
 }
 
-QString ConsoleView::prompt(const QString &message) {
-    QTextStream qout(stdout);
-    QTextStream qin(stdin);
-    qout << message;
-    qout.flush();
-    const QString input = qin.readLine();
-    if (input.isNull()) {
-        return {};
+void View::showMenu()
+{
+    m_out << "================================================\n";
+    m_out << "           NTRUSign Digital Signature\n";
+    m_out << "================================================\n\n";
+    m_out << "   [1] Generate Keys\n";
+    m_out << "   [2] Sign File\n";
+    m_out << "   [3] Verify Signature\n";
+    m_out << "   [0] Exit\n\n";
+    m_out << "================================================\n";
+    m_out << " Select option: ";
+    m_out.flush();
+}
+
+void View::showMessage(const QString& message)
+{
+    m_out << "[INFO] " << message << "\n";
+    m_out.flush();
+}
+
+void View::showError(const QString& error)
+{
+    m_out << "[ERROR] " << error << "\n";
+    m_out.flush();
+}
+
+QString View::readLine(const QString& prompt)
+{
+    if (!prompt.isEmpty()) {
+        m_out << prompt;
+        m_out.flush();
     }
-    return input.trimmed();
+
+    return m_in.readLine().trimmed();
 }
 
-void ConsoleView::showMessage(const QString &message) {
-    QTextStream qout(stdout);
-    qout << message << "\n";
-    qout.flush();
-}
-
-void ConsoleView::showVerificationResult(bool isValid) {
-    QTextStream qout(stdout);
-    if (isValid) {
-        qout << "ДЕЙСТВИТЕЛЬНА\n";    // Signature is valid
-    } else {
-        qout << "НЕДЕЙСТВИТЕЛЬНА\n";  // Signature is invalid
+int View::readInt(const QString& prompt)
+{
+    if (!prompt.isEmpty()) {
+        m_out << prompt;
+        m_out.flush();
     }
-    qout.flush();
+
+    QString line = m_in.readLine();
+    return line.toInt();
+}
+
+void View::onOperationCompleted(const QString& message)
+{
+    showMessage(message);
+}
+
+void View::onErrorOccurred(const QString& error)
+{
+    showError(error);
 }

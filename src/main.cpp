@@ -1,12 +1,17 @@
 #include <QCoreApplication>
 #include "src/controller/controller.h"
+#include "src/model/model.h"
+#include "src/view/view.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     QCoreApplication app(argc, argv);
 
-    // Initialize and run the NTRUSign controller (console interface)
-    NtruController controller;
+    Model model;
+    View view;
+    Controller controller(&model, &view);
+
     controller.run();
 
-    return 0;
+    return app.exec();
 }

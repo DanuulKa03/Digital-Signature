@@ -1,74 +1,105 @@
-#ifndef NTRU_MODEL_H
-#define NTRU_MODEL_H
+#ifndef MODEL_H
+#define MODEL_H
 
-#include <vector>
-#include <QString>
+#include <QObject>
+#include <QVector>
+#include <QByteArray>
+#include <QFile>
+#include <QCryptographicHash>
+#include <QRandomGenerator>
+#include <cmath>
 
-// Data type for polynomial coefficients (use 64-bit to handle mod q up to ~2^33 safely)
-using Coeff = long long;
+class Model : public QObject
+{
+Q_OBJECT
 
-/**
- * Structure to hold NTRUSign security parameters.
- */
-struct NtruParams {
-    int N;          // Polynomial degree (dimension)
-    Coeff q;        // Modulus
-    int d;          // Number of +1 (and -1) for ternary polynomials
-    int perturbCount; // ν: number of perturbation vectors
-};
-
-/**
- * Structure for NTRUSign private key (f, g, and perturbation polynomials).
- */
-struct NtruPrivKey {
-    std::vector<Coeff> f;                      // private polynomial f (length N)
-    std::vector<Coeff> g;                      // private polynomial g (length N) such that f*h ≡ g (mod q)
-    std::vector< std::vector<Coeff> > eList;   // perturbation polynomials e_i (length N each)
-};
-
-/**
- * Structure for NTRUSign public key (h polynomial).
- */
-struct NtruPubKey {
-    std::vector<Coeff> h;  // public polynomial h (length N) = f^(-1)*g mod q
-};
-
-/**
- * The Model class provides static methods to perform NTRUSign key generation, signing, and verification.
- */
-class NtruModel {
 public:
-    // Load parameters from a text file.
-    static bool loadParameters(const QString &paramFile, NtruParams &params);
+    explicit Model(QObject *parent = nullptr);
 
-    // Key generation: generate NTRUSign key pair given security parameters.
-    static bool generateKeyPair(const NtruParams &params, NtruPrivKey &privKey, NtruPubKey &pubKey);
+    struct Signature {
+        QVector<int> x1;
+        QVector<int> x2;
+        QVector<int> e;
 
-    // Save keys to files (public and private key files).
-    static bool savePrivateKey(const QString &privKeyFile, const NtruParams &params, const NtruPrivKey &privKey);
-    static bool savePublicKey(const QString &pubKeyFile, const NtruParams &params, const NtruPubKey &pubKey);
+        Signature() = default;
+        Signature(const Signature& other) = default;
+        Signature& operator=(const Signature& other) = default;
+    };
 
-    // Load keys from files.
-    static bool loadPrivateKey(const QString &privKeyFile, const NtruParams &params, NtruPrivKey &privKey);
-    static bool loadPublicKey(const QString &pubKeyFile, const NtruParams &params, NtruPubKey &pubKey);
+    struct KeyPair {
+        QVector<int> f;
+        QVector<int> g;
+        QVector<int> h;
 
-    // Sign a message file using the private key and parameters, output signature polynomial to file.
-    static bool signMessage(const NtruParams &params, const NtruPrivKey &privKey,
-                             const QString &messageFile, const QString &signatureFile);
+        KeyPair() = default;
+        KeyPair(const KeyPair& other) = default;
+        KeyPair& operator=(const KeyPair& other) = default;
+    };
 
-    // Verify a message's signature using the public key and parameters.
-    static bool verifyMessage(const NtruParams &params, const NtruPubKey &pubKey,
-                               const QString &messageFile, const QString &signatureFile);
+    // Main operations
+    bool loadParameters(const QString& filePath);
+    bool generateKeys();
+    bool signFile(const QString& filePath, Signature& signature);
+    bool verifySignature(const QString& filePath, const Signature& signature);
+
+    // Getters
+    const KeyPair& getKeyPair() const { return m_keyPair; }
+    QString getLastError() const { return m_lastError; }
+
+    // Save/load keys
+    bool savePrivateKey(const QString& filePath);
+    bool savePublicKey(const QString& filePath);
+    bool loadPrivateKey(const QString& filePath);
+    bool loadPublicKey(const QString& filePath);
+
+    // Save/load signature
+    bool saveSignature(const QString& filePath, const Signature& signature);
+    bool loadSignature(const QString& filePath, Signature& signature);
+
+signals:
+    void operationCompleted(const QString& message);
+    void errorOccurred(const QString& error);
 
 private:
-    // Polynomial arithmetic helpers (coefficients mod q, polynomials mod X^N - 1):
-    static void polyAdd(std::vector<Coeff> &res, const std::vector<Coeff> &a, const std::vector<Coeff> &b, Coeff q);
-    static void polySub(std::vector<Coeff> &res, const std::vector<Coeff> &a, const std::vector<Coeff> &b, Coeff q);
-    static void polyMulMod(std::vector<Coeff> &res, const std::vector<Coeff> &a, const std::vector<Coeff> &b, const NtruParams &params);
-    static bool invertPolyMod(const std::vector<Coeff> &a, const NtruParams &params, std::vector<Coeff> &a_inv);
+    // Parameters
+    int m_N = 0;
+    int m_Q = 0;
+    int m_D = 0;
+    int m_normBound = 0;
+    int m_alpha = 0;
+    int m_sigma = 0;
+    double m_nu = 0.0;
+    double m_eta = 0.0;
+    double m_macc = 0.0;
 
-    // Utility to reduce polynomial coefficients into range [-(q/2), q/2].
-    static void centerPoly(std::vector<Coeff> &poly, Coeff q);
+    int m_maxSignAttempts = 1000;
+
+    KeyPair m_keyPair;
+    QString m_lastError;
+
+    // Arithmetic operations
+    int modQ(long long x) const;
+    int center(int a) const;
+    QVector<int> zeroPoly() const;
+    QVector<int> subMod(const QVector<int>& a, const QVector<int>& b) const;
+    QVector<int> mulModQ(const QVector<int>& a, const QVector<int>& b) const;
+    QVector<int> mulModPow2(const QVector<int>& a, const QVector<int>& b, int M) const;
+
+    // Key operations
+    bool invertMod2(const QVector<int>& f, QVector<int>& inv2) const;
+    QVector<int> henselLiftToQ(const QVector<int>& f, const QVector<int>& inv2) const;
+    void genTernary(QVector<int>& a, QRandomGenerator& rng) const;
+
+    // Hashing and randomness
+    QVector<int> H_e_small(const QVector<int>& z_modq, const QByteArray& msg) const;
+    int sampleGaussInt(QRandomGenerator& rng, double sigma) const;
+
+    // Signing
+    bool NTRUSign_once(const QVector<int>& m, QVector<int>& s_out) const;
+
+    // Helper functions
+    QByteArray calculateFileHash(const QString& filePath) const;
+    bool validateParameters();
 };
 
-#endif // NTRU_MODEL_H
+#endif // MODEL_H

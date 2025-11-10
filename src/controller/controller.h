@@ -1,29 +1,32 @@
-#ifndef NTRU_CONTROLLER_H
-#define NTRU_CONTROLLER_H
+#ifndef CONTROLLER_H
+#define CONTROLLER_H
 
-#include "src/model/model.h"
-#include "src/view/view.h"
+#include <QObject>
+#include <QString>
 
-/**
- * Controller class that orchestrates user input, model operations, and view output.
- */
-class NtruController {
+class Model;
+class View;
+
+class Controller : public QObject
+{
+Q_OBJECT
+
 public:
-    NtruController();
-    // Run the main control loop
+    explicit Controller(Model *model, View *view, QObject *parent = nullptr);
     void run();
 
-private:
-    ConsoleView view;
-    NtruParams params;
-    bool paramsLoaded;  // flag to indicate if parameters have been loaded
-
-    // Helper to handle key generation workflow
+private slots:
+    void handleMenuChoice(int choice);
     void handleKeyGeneration();
-    // Helper to handle signing workflow
-    static void handleSigning();
-    // Helper to handle verification workflow
-    static void handleVerification() ;
+    void handleSignFile();
+    void handleVerifySignature();
+
+private:
+    Model *m_model;
+    View *m_view;
+
+    QString getFilePath(const QString& prompt);
+    void waitForEnter();
 };
 
-#endif // NTRU_CONTROLLER_H
+#endif // CONTROLLER_H

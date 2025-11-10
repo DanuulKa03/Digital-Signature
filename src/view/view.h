@@ -1,21 +1,29 @@
-#ifndef NTRU_VIEW_H
-#define NTRU_VIEW_H
+#ifndef VIEW_H
+#define VIEW_H
 
-#include <QString>
+#include <QObject>
+#include <QTextStream>
 
-/**
- * Console View class for user interaction (input/output in console).
- */
-class ConsoleView {
+class View : public QObject
+{
+Q_OBJECT
+
 public:
-    // Display menu and instructions
-  static void displayMenu();
-    // Prompt user for a string (with a message) and return the input
-    static QString prompt(const QString &message);
-    // Display a message to the console (without waiting for input)
-    static void showMessage(const QString &message);
-    // Display result of signature verification
-    static void showVerificationResult(bool isValid);
+    explicit View(QObject *parent = nullptr);
+    void showMenu();
+    void showMessage(const QString& message);
+    void showError(const QString& error);
+
+    QString readLine(const QString& prompt = "");
+    int readInt(const QString& prompt = "");
+
+public slots:
+    void onOperationCompleted(const QString& message);
+    void onErrorOccurred(const QString& error);
+
+private:
+    QTextStream m_out;
+    QTextStream m_in;
 };
 
-#endif // NTRU_VIEW_H
+#endif // VIEW_H
