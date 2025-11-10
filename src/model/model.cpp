@@ -4,61 +4,77 @@
 #include <QFile>
 #include <QRandomGenerator>
 #include <QRegularExpression>
+#include <QJsonParseError>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include <algorithm>
 
-/**
- * Load security parameters (N, q, d, ν) from a text file.
- * The file may contain the parameters either space-separated or line-separated,
- * possibly with labels.
- */
+// Ожидается, что NtruParams имеет поля:
+// int N;
+// qint64 q;      // если у вас другой тип — подправьте приведение
+// int d;
+// int perturbCount;
 bool NtruModel::loadParameters(const QString &paramFile, NtruParams &params) {
     QFile file(paramFile);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return false;
     }
-    QTextStream in(&file);
-    params.N = 0;
-    params.q = 0;
-    params.d = 0;
-    params.perturbCount = 0;
-    // Read all lines and parse integers
-    while (!in.atEnd()) {
-        QString line = in.readLine().trimmed();
-        if (line.isEmpty()) continue;
-        // Remove any non-digit (and minus sign) characters (e.g., "N=", "q=" labels)
-        static auto qReqExptRemove = QRegularExpression("[^0-9\\- ]");
-        line.remove(qReqExptRemove);
-
-        if (line.isEmpty()) continue;
-
-        static auto qReqExptSplit = QRegularExpression("\\s+");
-        QStringList tokens = line.split(qReqExptSplit, Qt::SkipEmptyParts);
-        for (const QString &tok : tokens) {
-            bool ok = false;
-          const long long value = tok.toLongLong(&ok);
-            if (!ok) continue;
-            // Assign values in order if parameters not set yet
-            if (params.N == 0) {
-                params.N = static_cast<int>(value);
-            } else if (params.q == 0) {
-                params.q = value;
-            } else if (params.d == 0) {
-                params.d = static_cast<int>(value);
-            } else if (params.perturbCount == 0) {
-                params.perturbCount = static_cast<int>(value);
-            }
-        }
-        // If all params filled, break out
-        if (params.N != 0 && params.q != 0 && params.d != 0 && params.perturbCount != 0) {
-            break;
-        }
-    }
+    const QByteArray data = file.readAll();
     file.close();
-    // Validate that all required parameters were found
-    if (params.N <= 0 || params.q <= 0 || params.d < 0 || params.perturbCount < 0) {
+
+    QJsonParseError jerr{};
+    QJsonDocument doc = QJsonDocument::fromJson(data, &jerr);
+    if (jerr.error != QJsonParseError::NoError || !doc.isObject()) {
         return false;
     }
+
+    QJsonObject root = doc.object();
+    // Параметры могут лежать либо в корне, либо в "params"
+    QJsonObject obj = root.contains("params") && root["params"].isObject()
+                      ? root["params"].toObject()
+                      : root;
+
+    auto readInt64 = [](const QJsonObject &o, const QStringList &keys, qint64 &out) -> bool {
+        for (const QString &k : keys) {
+            if (!o.contains(k)) continue;
+            const QJsonValue v = o.value(k);
+            if (v.isDouble()) { // JSON number
+                out = static_cast<qint64>(v.toDouble());
+                return true;
+            }
+            if (v.isString()) { // число в строке
+                bool ok = false;
+                const qint64 val = v.toString().trimmed().toLongLong(&ok);
+                if (ok) { out = val; return true; }
+            }
+        }
+        return false;
+    };
+
+    qint64 N64 = 0, q64 = 0, d64 = 0, nu64 = 0;
+
+    const bool okN  = readInt64(obj, {"N", "n"}, N64);
+    const bool okq  = readInt64(obj, {"q", "Q"}, q64);
+    const bool okd  = readInt64(obj, {"d", "D"}, d64);
+    const bool oknu = readInt64(obj, {"nu", "ν", "perturbCount"}, nu64);
+
+    // Валидация наличия
+    if (!(okN && okq && okd && oknu)) {
+        return false;
+    }
+
+    // Валидация значений (подкорректируйте правила при необходимости)
+    if (N64 <= 0 || q64 <= 0 || d64 < 0 || nu64 < 0) {
+        return false;
+    }
+
+    // Присвоение (учитывая типы полей вашей структуры)
+    params.N = static_cast<int>(N64);
+    params.q = static_cast<qint64>(q64);
+    params.d = static_cast<int>(d64);
+    params.perturbCount = static_cast<int>(nu64);
+
     return true;
 }
 
