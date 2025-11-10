@@ -1,29 +1,10 @@
-#ifndef VIEW_H
-#define VIEW_H
+#pragma once
+#include <QtCore/QString>
 
-#include <QObject>
-#include <QTextStream>
-
-class View : public QObject
-{
-Q_OBJECT
-
+class ConsoleView {
 public:
-    explicit View(QObject *parent = nullptr);
-    void showMenu();
-    void showMessage(const QString& message);
-    void showError(const QString& error);
-
-    QString readLine(const QString& prompt = "");
-    int readInt(const QString& prompt = "");
-
-public slots:
-    void onOperationCompleted(const QString& message);
-    void onErrorOccurred(const QString& error);
-
-private:
-    QTextStream m_out;
-    QTextStream m_in;
+    static void displayMenu();
+    static QString prompt(const QString& text);
+    static void showMessage(const QString& msg);
+    static void waitForEnter();
 };
-
-#endif // VIEW_H

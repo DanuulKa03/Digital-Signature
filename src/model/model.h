@@ -1,105 +1,114 @@
-#ifndef MODEL_H
-#define MODEL_H
+#pragma once
+#include <QtCore/QString>
+#include <QtCore/QVector>
+#include <QtCore/QByteArray>
+#include <QtCore/QPair>
+#include <functional>
 
-#include <QObject>
-#include <QVector>
-#include <QByteArray>
-#include <QFile>
-#include <QCryptographicHash>
-#include <QRandomGenerator>
-#include <cmath>
 
-class Model : public QObject
-{
-Q_OBJECT
-
+class NtruModel {
 public:
-    explicit Model(QObject *parent = nullptr);
+    NtruModel();
 
-    struct Signature {
-        QVector<int> x1;
-        QVector<int> x2;
-        QVector<int> e;
+    // параметры
+    bool loadParameters(const QString& paramPath);
 
-        Signature() = default;
-        Signature(const Signature& other) = default;
-        Signature& operator=(const Signature& other) = default;
-    };
+    // ключи
+    bool keygen();
+    bool savePrivateKey(const QString& userPath);
+    bool savePublicKey (const QString& userPath);
+    bool loadPrivateKey(const QString& path);
+    bool loadPublicKey (const QString& path);
 
-    struct KeyPair {
-        QVector<int> f;
-        QVector<int> g;
-        QVector<int> h;
-
-        KeyPair() = default;
-        KeyPair(const KeyPair& other) = default;
-        KeyPair& operator=(const KeyPair& other) = default;
-    };
-
-    // Main operations
-    bool loadParameters(const QString& filePath);
-    bool generateKeys();
-    bool signFile(const QString& filePath, Signature& signature);
-    bool verifySignature(const QString& filePath, const Signature& signature);
-
-    // Getters
-    const KeyPair& getKeyPair() const { return m_keyPair; }
-    QString getLastError() const { return m_lastError; }
-
-    // Save/load keys
-    bool savePrivateKey(const QString& filePath);
-    bool savePublicKey(const QString& filePath);
-    bool loadPrivateKey(const QString& filePath);
-    bool loadPublicKey(const QString& filePath);
-
-    // Save/load signature
-    bool saveSignature(const QString& filePath, const Signature& signature);
-    bool loadSignature(const QString& filePath, Signature& signature);
-
-signals:
-    void operationCompleted(const QString& message);
-    void errorOccurred(const QString& error);
+    // подпись/проверка (работа с файлами)
+    bool signFile  (const QString& docPath, const QString& sigPlace);
+    bool verifyFile(const QString& docPath, const QString& sigPath);
 
 private:
-    // Parameters
-    int m_N = 0;
-    int m_Q = 0;
-    int m_D = 0;
-    int m_normBound = 0;
-    int m_alpha = 0;
-    int m_sigma = 0;
-    double m_nu = 0.0;
-    double m_eta = 0.0;
-    double m_macc = 0.0;
+    // типы
+    using Poly = QVector<int>;
+    struct EHash { Poly e_small; Poly e_mod; };
+    struct Signature { Poly x1, x2, e; };
 
-    int m_maxSignAttempts = 1000;
+    // глобальные параметры (из файла)
+    int G_N = 0;
+    int G_Q = 0;
+    int G_D = 0;
+    int G_NORM_BOUND = 0;
+    int G_ALPHA = 0;
+    int G_SIGMA = 0;
+    int G_MAX_SIGN_ATT = 1000;
+    double G_NU = 0.0;
+    double G_ETA = 0.0;
+    double G_MACC = 0.0;
 
-    KeyPair m_keyPair;
-    QString m_lastError;
+    // ключи
+    Poly G_F, G_G, G_H;
 
-    // Arithmetic operations
-    int modQ(long long x) const;
-    int center(int a) const;
-    QVector<int> zeroPoly() const;
-    QVector<int> subMod(const QVector<int>& a, const QVector<int>& b) const;
-    QVector<int> mulModQ(const QVector<int>& a, const QVector<int>& b) const;
-    QVector<int> mulModPow2(const QVector<int>& a, const QVector<int>& b, int M) const;
+    // утилиты
+    static int modQ(long long x, int q);
+    static int center(int a, int q);
+    Poly zeroP() const;
+    Poly subMod(const Poly& A, const Poly& B) const;
+    Poly mulModQ(const Poly& A, const Poly& B) const;
+    Poly mulModPow2(const Poly& A, const Poly& B, int M) const;
 
-    // Key operations
-    bool invertMod2(const QVector<int>& f, QVector<int>& inv2) const;
-    QVector<int> henselLiftToQ(const QVector<int>& f, const QVector<int>& inv2) const;
-    void genTernary(QVector<int>& a, QRandomGenerator& rng) const;
+    // GF(2) + Хензель
+    struct Poly2 { QVector<unsigned char> a; };
+    static int deg2(const Poly2& p);
+    static Poly2 trim2(const Poly2& p);
+    static Poly2 add2 (const Poly2& A, const Poly2& B);
+    static Poly2 shl2_nonCirc(const Poly2& A, int k);
+    static Poly2 mul2_nonCirc(const Poly2& A, const Poly2& B);
+    static void  div2_poly(const Poly2& A, const Poly2& B, Poly2& Q, Poly2& R);
+    bool invertMod2(const Poly& f, Poly& inv2_out) const;
+    Poly henselLiftToQ(const Poly& f, const Poly& inv2) const;
 
-    // Hashing and randomness
-    QVector<int> H_e_small(const QVector<int>& z_modq, const QByteArray& msg) const;
-    int sampleGaussInt(QRandomGenerator& rng, double sigma) const;
+    // генерация ключей
+    void genTernary(Poly& a, const std::function<quint32()>& rng);
+    bool internalKeygen();
 
-    // Signing
-    bool NTRUSign_once(const QVector<int>& m, QVector<int>& s_out) const;
+    // RNG (простой интерфейс на chacha20 из исходника — оставим как есть)
+    struct ChaCha20 {
+        quint32 st[16];
+        static inline quint32 rotl(quint32 x, int n) { return (x << n) | (x >> (32 - n)); }
+        static inline void qr(quint32 s[16], int a, int b, int c, int d) {
+            s[a]+=s[b]; s[d]^=s[a]; s[d]=rotl(s[d],16);
+            s[c]+=s[d]; s[b]^=s[c]; s[b]=rotl(s[b],12);
+            s[a]+=s[b]; s[d]^=s[a]; s[d]=rotl(s[d],8);
+            s[c]+=s[d]; s[b]^=s[c]; s[b]=rotl(s[b],7);
+        }
+        void set(const uchar key[32], const uchar nonce[12], quint32 counter = 1);
+        void block(uchar out[64]);
+    };
+    struct SecureChaChaRng {
+        ChaCha20 ch; uchar buf[64]; int idx = 64;
+        SecureChaChaRng();
+        void reseed(const void* extra, size_t elen);
+        quint32 operator()();
+    };
 
-    // Helper functions
-    QByteArray calculateFileHash(const QString& filePath) const;
-    bool validateParameters();
+    // хэши и XOF через QCryptographicHash
+    static QByteArray sha256(const QByteArray& data);
+    static void xofFill(const QByteArray& seed, uchar* out, size_t len);
+
+    // H_e_small
+    EHash H_e_small(const Poly& z_modq, const QByteArray& msg) const;
+
+    // дискретная "гауссиана" (CRN + 12 сумм)
+    static int sample_gauss_int(const std::function<quint32()>& rng, double sigma);
+    // NTRUSign_once
+    bool NTRUSign_once(const Poly& m, Poly& s_out) const;
+
+    // sign/verify core
+    bool sign_strict(const QByteArray& msg, Signature& sig) const;
+
+    // файловые операции подписи
+    bool write_sig(const QString& sigPath, const Signature& S) const;
+    bool read_sig(const QString& sigPath, Signature& S) const;
+
+    // хелперы путей
+    static QString toTargetFilePath(const QString& userPath, const QString& defaultName, const QString& defaultExt);
+    static bool ensureParentDirs(const QString& fullPath);
+    static bool isDirectoryLike(const QString& path);
 };
-
-#endif // MODEL_H

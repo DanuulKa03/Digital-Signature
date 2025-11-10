@@ -1,172 +1,79 @@
 #include "src/controller/controller.h"
-#include "src/model/model.h"
 #include "src/view/view.h"
-#include <QCoreApplication>
+#include "src/model/model.h"
+#include <QtCore/QFileInfo>
+#include <QtCore/QDir>
 
-Controller::Controller(Model *model, View *view, QObject *parent)
-        : QObject(parent), m_model(model), m_view(view)
-{
-    if (m_model && m_view) {
-        connect(m_model, &Model::operationCompleted, m_view, &View::onOperationCompleted);
-        connect(m_model, &Model::errorOccurred, m_view, &View::onErrorOccurred);
-    }
-}
+NtruController::NtruController() = default;
 
-void Controller::run()
-{
+void NtruController::run() {
     while (true) {
-        m_view->showMenu();
-        int choice = 0;
+        ConsoleView::displayMenu();
+        QString choiceStr = ConsoleView::prompt(QString());
         bool ok = false;
-
-        while (!ok) {
-            QString input = m_view->readLine();
-            choice = input.toInt(&ok);
-            if (!ok) {
-                m_view->showError("Please enter a number");
-                m_view->showMenu();
-            }
+        int choice = choiceStr.toInt(&ok);
+        if (!ok) {
+            ConsoleView::showMessage("Неверный ввод. Введите 0..3.");
+            ConsoleView::waitForEnter();
+            continue;
         }
-
-        if (choice == 0) {
-            m_view->showMessage("Exiting program...");
-            QCoreApplication::quit();
-            break;
-        }
-
-        handleMenuChoice(choice);
-        waitForEnter();
+        if (choice == 0) break;
+        if (choice == 1)      { if (!handleKeyGeneration()) ConsoleView::showMessage("[!] Генерация не выполнена."); ConsoleView::waitForEnter(); }
+        else if (choice == 2) { if (!handleSigning())       ConsoleView::showMessage("[!] Подпись не выполнена.");   ConsoleView::waitForEnter(); }
+        else if (choice == 3) { if (!handleVerification())  ConsoleView::showMessage("[!] Проверка не выполнена.");  ConsoleView::waitForEnter(); }
+        else { ConsoleView::showMessage("Неверный пункт."); ConsoleView::waitForEnter(); }
     }
 }
 
-void Controller::handleMenuChoice(int choice)
-{
-    switch (choice) {
-        case 1:
-            handleKeyGeneration();
-            break;
-        case 2:
-            handleSignFile();
-            break;
-        case 3:
-            handleVerifySignature();
-            break;
-        default:
-            m_view->showError("Invalid menu option");
-            break;
-    }
+bool NtruController::handleKeyGeneration() {
+    QString paramsPath = ConsoleView::prompt("Укажите путь к файлу параметров: ");
+    NtruModel model;
+    if (!model.loadParameters(paramsPath)) return false;
+    if (!model.keygen()) return false;
+
+    QString privWhere = ConsoleView::prompt("Куда сохранить ПРИВАТНЫЙ ключ (папка или файл): ");
+    if (!model.savePrivateKey(privWhere)) return false;
+
+    QString pubWhere = ConsoleView::prompt("Куда сохранить ОТКРЫТЫЙ ключ (папка или файл): ");
+    if (!model.savePublicKey(pubWhere)) return false;
+
+    ConsoleView::showMessage("Генерация завершена успешно.");
+    return true;
 }
 
-void Controller::handleKeyGeneration()
-{
-    QString paramsFile = getFilePath("Enter parameters file path: ");
-    if (paramsFile.isEmpty()) {
-        m_view->showError("Parameters file path cannot be empty");
-        return;
-    }
+bool NtruController::handleSigning() {
+    NtruModel model;
 
-    if (!m_model->loadParameters(paramsFile)) {
-        m_view->showError(m_model->getLastError());
-        return;
-    }
+    QString paramsPath = ConsoleView::prompt("Укажите путь к файлу параметров: ");
+    if (!model.loadParameters(paramsPath)) return false;
 
-    if (!m_model->generateKeys()) {
-        m_view->showError(m_model->getLastError());
-        return;
-    }
+    QString priv = ConsoleView::prompt("Укажите путь к файлу приватного ключа: ");
+    if (!model.loadPrivateKey(priv)) return false;
 
-    QString privKeyPath = getFilePath("Save private key to: ");
-    if (privKeyPath.isEmpty() || !m_model->savePrivateKey(privKeyPath)) {
-        m_view->showError("Failed to save private key");
-        return;
-    }
+    QString doc = ConsoleView::prompt("Укажите путь к файлу, который нужно подписать: ");
+    if (!QFileInfo::exists(doc)) { ConsoleView::showMessage("[!] Файл не найден."); return false; }
 
-    QString pubKeyPath = getFilePath("Save public key to: ");
-    if (pubKeyPath.isEmpty() || !m_model->savePublicKey(pubKeyPath)) {
-        m_view->showError("Failed to save public key");
-        return;
-    }
+    QString sigPath = ConsoleView::prompt("Куда сохранить файл подписи (папка или имя .sig): ");
+    if (!model.signFile(doc, sigPath)) return false;
+
+    ConsoleView::showMessage("Подпись создана.");
+    return true;
 }
 
-void Controller::handleSignFile()
-{
-    QString paramsFile = getFilePath("Enter parameters file path: ");
-    if (paramsFile.isEmpty() || !m_model->loadParameters(paramsFile)) {
-        m_view->showError("Failed to load parameters");
-        return;
-    }
+bool NtruController::handleVerification() {
+    NtruModel model;
 
-    QString privKeyPath = getFilePath("Enter private key path: ");
-    if (privKeyPath.isEmpty() || !m_model->loadPrivateKey(privKeyPath)) {
-        m_view->showError("Failed to load private key");
-        return;
-    }
+    QString doc = ConsoleView::prompt("Укажите путь к исходному файлу (документу): ");
+    if (!QFileInfo::exists(doc)) { ConsoleView::showMessage("[!] Файл не найден."); return false; }
 
-    QString filePath = getFilePath("Enter file to sign: ");
-    if (filePath.isEmpty()) {
-        m_view->showError("File path cannot be empty");
-        return;
-    }
+    QString paramsPath = ConsoleView::prompt("Укажите путь к файлу параметров: ");
+    if (!model.loadParameters(paramsPath)) return false;
 
-    Model::Signature signature;
-    if (!m_model->signFile(filePath, signature)) {
-        m_view->showError("Failed to sign file");
-        return;
-    }
+    QString pub = ConsoleView::prompt("Укажите путь к файлу открытого ключа: ");
+    if (!model.loadPublicKey(pub)) return false;
 
-    QString sigPath = getFilePath("Save signature to: ");
-    if (sigPath.isEmpty() || !m_model->saveSignature(sigPath, signature)) {
-        m_view->showError("Failed to save signature");
-        return;
-    }
-}
-
-void Controller::handleVerifySignature()
-{
-    QString filePath = getFilePath("Enter original file path: ");
-    if (filePath.isEmpty()) {
-        m_view->showError("File path cannot be empty");
-        return;
-    }
-
-    QString paramsFile = getFilePath("Enter parameters file path: ");
-    if (paramsFile.isEmpty() || !m_model->loadParameters(paramsFile)) {
-        m_view->showError("Failed to load parameters");
-        return;
-    }
-
-    QString pubKeyPath = getFilePath("Enter public key path: ");
-    if (pubKeyPath.isEmpty() || !m_model->loadPublicKey(pubKeyPath)) {
-        m_view->showError("Failed to load public key");
-        return;
-    }
-
-    QString sigPath = getFilePath("Enter signature file path: ");
-    if (sigPath.isEmpty()) {
-        m_view->showError("Signature path cannot be empty");
-        return;
-    }
-
-    Model::Signature signature;
-    if (!m_model->loadSignature(sigPath, signature)) {
-        m_view->showError("Failed to load signature");
-        return;
-    }
-
-    if (!m_model->verifySignature(filePath, signature)) {
-        m_view->showError("Signature is invalid");
-        return;
-    }
-
-    m_view->showMessage("Signature is VALID");
-}
-
-QString Controller::getFilePath(const QString& prompt)
-{
-    return m_view->readLine(prompt);
-}
-
-void Controller::waitForEnter()
-{
-    m_view->readLine("\nPress Enter to continue...");
+    QString sigPath = ConsoleView::prompt("Укажите путь к файлу подписи (.sig): ");
+    const bool ok = model.verifyFile(doc, sigPath);
+    ConsoleView::showMessage(ok ? "Подпись ДЕЙСТВИТЕЛЬНА" : "Подпись недействительна");
+    return ok;
 }

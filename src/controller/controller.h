@@ -1,32 +1,13 @@
-#ifndef CONTROLLER_H
-#define CONTROLLER_H
+#pragma once
+#include <QtCore/QString>
 
-#include <QObject>
-#include <QString>
-
-class Model;
-class View;
-
-class Controller : public QObject
-{
-Q_OBJECT
-
+class NtruController {
 public:
-    explicit Controller(Model *model, View *view, QObject *parent = nullptr);
+    NtruController();
     void run();
 
-private slots:
-    void handleMenuChoice(int choice);
-    void handleKeyGeneration();
-    void handleSignFile();
-    void handleVerifySignature();
-
 private:
-    Model *m_model;
-    View *m_view;
-
-    QString getFilePath(const QString& prompt);
-    void waitForEnter();
+    bool handleKeyGeneration();
+    bool handleSigning();
+    bool handleVerification();
 };
-
-#endif // CONTROLLER_H
