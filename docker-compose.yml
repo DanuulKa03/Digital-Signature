@@ -2,20 +2,28 @@ services:
   alica:
     build:
       dockerfile: ./Dockerfile
-    entrypoint: tail -f /dev/null   # Это заставит контейнер работать вечно
+    entrypoint: ["bash", "/entrypoint.sh"]
+    environment:
+      - DIGITAL=alica
     networks:
       - isolated_network
-    stdin_open: true                 # Для поддержания терминала открытым (если нужно работать через контейнер)
-    tty: true                        # Для обеспечения возможности работать в терминале
+    volumes:
+      - .:/digital_signature
+    stdin_open: true
+    tty: true
 
   bob:
     build:
       dockerfile: ./Dockerfile
-    entrypoint: tail -f /dev/null   # Это заставит контейнер работать вечно
+    entrypoint: ["bash", "/entrypoint.sh"]
+    environment:
+      - DIGITAL=bob
     networks:
       - isolated_network
-    stdin_open: true                 # Для поддержания терминала открытым (если нужно работать через контейнер)
-    tty: true                        # Для обеспечения возможности работать в терминале
+    volumes:
+      - .:/digital_signature
+    stdin_open: true
+    tty: true
 
 networks:
   isolated_network:
